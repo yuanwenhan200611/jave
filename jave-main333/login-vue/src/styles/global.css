@@ -1,0 +1,89 @@
+/* 全局样式：天命大反派 · 修仙（魔宗）主题变量、重置、页面底色 */
+
+:root {
+  /* 底色：玄夜 + 血气 */
+  --bg: #0a0710;
+  --bg-2: #120a18;
+
+  /* 面板：墨玉黑，半透出煞气 */
+  --card: rgba(22, 15, 30, 0.92);
+  --card-solid: #16101e;
+  --card-input: rgba(12, 8, 18, 0.85);
+
+  /* 文字 */
+  --text: #ece6f5;
+  --text-soft: #9a8fb0;
+  --text-dim: #6f6585;
+
+  /* 描边：玄金微光 */
+  --border: rgba(196, 154, 92, 0.22);
+  --border-strong: rgba(196, 154, 92, 0.45);
+
+  /* 主色：血玉红（魔） */
+  --primary: #c8102e;
+  --primary-dark: #7a0f1d;
+  --primary-light: #e23a4e;
+
+  /* 玄金 */
+  --gold: #d4af37;
+  --gold-soft: #e8c66a;
+
+  /* 状态色 */
+  --danger: #ff4d5e;
+  --success: #4cc38a;
+
+  /* 煞气辉光 */
+  --glow: rgba(200, 16, 46, 0.35);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "STKaiti", "KaiTi", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", serif;
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* 血月 + 煞气 的层次光晕 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1100px 560px at 12% -12%, rgba(200, 16, 46, .20), transparent 60%),
+    radial-gradient(900px 520px at 112% 118%, rgba(123, 15, 29, .26), transparent 55%),
+    radial-gradient(620px 620px at 82% -6%, rgba(212, 175, 55, .07), transparent 60%),
+    linear-gradient(160deg, #0a0710 0%, #160c1e 50%, #0a0710 100%);
+}
+
+/* 墨点星纹 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: .5;
+}
+
+#app {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
