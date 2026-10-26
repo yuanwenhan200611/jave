@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import BrandPanel from './components/BrandPanel.vue'
 import LoginForm from './components/LoginForm.vue'
 import RegisterForm from './components/RegisterForm.vue'
@@ -41,15 +41,7 @@ const view = ref('login') // 'login' | 'register' | 'home'
 const lastUsername = ref('')
 const currentUser = ref('')
 
-// 刷新后若已登录则直接进入首页（仅前端会话保持，后端接口不变）
-onMounted(() => {
-  const token = localStorage.getItem('token')
-  const username = localStorage.getItem('username')
-  if (token && username) {
-    currentUser.value = username
-    view.value = 'home'
-  }
-})
+// 打开永远是登录页；登录成功后才进入首页（不读取旧 token 自动续登）
 
 function handleSuccess(res) {
   // 登录成功：保存会话并跳转首页

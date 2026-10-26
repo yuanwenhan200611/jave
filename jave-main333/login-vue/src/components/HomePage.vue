@@ -31,11 +31,12 @@
       </div>
     </nav>
 
-    <!-- 主视觉 + 搜索栏 -->
+    <!-- 主视觉 + 搜索 -->
     <header class="hero">
-      <div class="hero-seal">宗</div>
-      <h1>恭迎 {{ username }} 道友归宗</h1>
-      <p class="hero-sub">执掌乾坤，搜罗诸天万界之秘</p>
+      <div class="hero-head">
+        <span class="hero-seal">宗</span>
+        <h1>恭迎 {{ username }} 道友归宗</h1>
+      </div>
 
       <form class="search" novalidate @submit.prevent="onSearch">
         <div class="search-box">
@@ -47,26 +48,77 @@
             v-model.trim="query"
             type="text"
             class="search-input"
-            placeholder="检索功法、秘境、同道、法宝……"
-            @input="searched = false"
+            placeholder="检索功法、秘境、丹药、法宝……"
           >
+          <select v-model="searchCategoryId" class="search-cat">
+            <option :value="0">全部分类</option>
+            <option v-for="cat in flatCategories" :key="cat.id" :value="cat.id">
+              {{ cat.prefix }}{{ cat.name }}
+            </option>
+          </select>
           <button class="search-btn" type="submit">搜 索</button>
         </div>
-        <p v-if="searched" class="search-hint">检索「{{ lastQuery }}」—— 后端检索接口尚未接入</p>
+        <p v-if="searchError" class="search-hint search-error">{{ searchError }}</p>
       </form>
     </header>
 
-    <!-- 快速入口（占位内容，其余页面待建设） -->
-    <section class="entries">
-      <div
-        v-for="entry in entries"
-        :key="entry.title"
-        class="entry-card"
-        @click="onEntry(entry)"
-      >
-        <div class="entry-icon">{{ entry.icon }}</div>
-        <h3>{{ entry.title }}</h3>
-        <p>{{ entry.desc }}</p>
+    <!-- 分类导航 -->
+    <section class="cats">
+      <div class="section-head"><h2>分类导航</h2></div>
+      <div class="cat-chips">
+        <button
+          v-for="c in topCategories"
+          :key="c.id"
+          type="button"
+          class="cat-chip"
+          :class="{ active: searchCategoryId === c.id && searched }"
+          @click="quickSearch(c.id, c.name)"
+        >
+          <span class="cat-icon">{{ c.icon }}</span>
+          <span class="cat-name">{{ c.name }}</span>
+          <span class="cat-count">{{ c.count }}</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 检索结果 -->
+    <section v-if="searched" class="results">
+      <div class="section-head">
+        <h2>检索「{{ lastQuery }}」</h2>
+        <span class="section-extra">{{ resultTotal }} 条
+          <button class="clear-btn" type="button" @click="clearSearch">清空</button>
+        </span>
+      </div>
+      <p v-if="!resultList.length" class="empty">未寻得相关之物，换个词条试试</p>
+      <ul v-else class="result-list">
+        <li v-for="item in resultList" :key="item.id" class="result-row" @click="onEntry(item)">
+          <span class="row-icon">{{ item.icon || '✦' }}</span>
+          <div class="row-main">
+            <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
+            <p>{{ item.description }}</p>
+          </div>
+          <span class="row-meta">{{ categoryNameById(item.categoryId) }}</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 热门榜 -->
+    <section class="hot">
+      <div class="section-head"><h2>炙手可热</h2></div>
+      <div class="hot-grid">
+        <div
+          v-for="(item, idx) in hotItems"
+          :key="item.id"
+          class="hot-card"
+          @click="onEntry(item)"
+        >
+          <span class="rank" :class="{ top: idx < 3 }">{{ idx + 1 }}</span>
+          <div class="hot-body">
+            <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
+            <p>{{ item.description }}</p>
+            <span class="hot-meta">{{ categoryNameById(item.categoryId) }} · {{ item.viewCount }} 阅</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -75,8 +127,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useToast } from '../composables/useToast'
+import { fetchHomeSummary, searchItems } from '../api/home'
 
 const props = defineProps({
   username: {
@@ -93,6 +146,8 @@ const activeNav = ref('home')
 const query = ref('')
 const searched = ref(false)
 const lastQuery = ref('')
+const searchCategoryId = ref(0)
+const searchError = ref('')
 
 const navItems = [
   { key: 'home', label: '首页' },
@@ -102,38 +157,117 @@ const navItems = [
   { key: 'forum', label: '论道' }
 ]
 
-const entries = [
-  { icon: '📜', title: '功法总览', desc: '诸天功法，皆可习练' },
-  { icon: '🗺️', title: '秘境探幽', desc: '无尽秘境，待你开辟' },
-  { icon: '⚗️', title: '丹药炼制', desc: '逆天改命之丹' },
-  { icon: '🗡️', title: '法宝祭炼', desc: '神兵利器，掌中乾坤' },
-  { icon: '🐉', title: '灵兽收服', desc: '万兽臣服，皆入麾下' },
-  { icon: '📖', title: '宗门典籍', desc: '万载传承，尽数收录' }
-]
+// 后端首页数据
+const categories = ref([])
+const hotItems = ref([])
+const allCategories = ref([])
+const resultList = ref([])
+const resultTotal = ref(0)
+const categoryCounts = ref({})
 
 const avatarChar = computed(() => (props.username ? props.username.slice(0, 1).toUpperCase() : '道'))
 
-function onSearch() {
-  if (!query.value) {
-    showToast('请输入检索词条')
+// 顶级分类（分类导航用，条目数来自后端聚合）
+const topCategories = computed(() =>
+  categories.value.map(c => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon || '✦',
+    count: categoryCounts.value[c.id] || 0
+  }))
+)
+
+// 展平分类树
+function flatten(nodes, acc = []) {
+  for (const n of nodes) {
+    acc.push(n)
+    if (n.children?.length) flatten(n.children, acc)
+  }
+  return acc
+}
+
+// 展平分类树，用于搜索下拉（带缩进前缀体现分级）
+const flatCategories = computed(() => {
+  const list = []
+  const walk = (nodes, depth) => {
+    for (const n of nodes) {
+      list.push({ id: n.id, name: n.name, prefix: '　'.repeat(depth) + (depth ? '└ ' : '') })
+      if (n.children?.length) walk(n.children, depth + 1)
+    }
+  }
+  walk(categories.value, 0)
+  return list
+})
+
+const categoryNameById = computed(() => (id) => {
+  const c = allCategories.value.find(c => c.id === id)
+  return c ? c.name : '未分类'
+})
+
+async function loadSummary() {
+  try {
+    const data = await fetchHomeSummary()
+    categories.value = data.categories || []
+    hotItems.value = data.hotItems || []
+    categoryCounts.value = data.categoryCounts || {}
+    allCategories.value = flatten(categories.value)
+  } catch (e) {
+    showToast(e.message || '首页数据加载失败')
+  }
+}
+
+onMounted(loadSummary)
+
+async function doSearch(keyword, categoryId) {
+  try {
+    const data = await searchItems(keyword, categoryId || undefined)
+    resultList.value = data.list || []
+    resultTotal.value = data.total || 0
+    searched.value = true
+    searchError.value = ''
+  } catch (e) {
+    searched.value = false
+    searchError.value = e.message || '检索失败'
+  }
+}
+
+async function onSearch() {
+  if (!query.value && !searchCategoryId.value) {
+    showToast('请输入检索词条或选择分类')
     return
   }
-  lastQuery.value = query.value
-  searched.value = true
-  // 后端检索接口尚未接入，仅作前端占位提示
-  showToast(`检索「${query.value}」—— 后端检索接口尚未接入`)
+  const catName = searchCategoryId.value
+    ? (flatCategories.value.find(c => c.id === searchCategoryId.value)?.name || '')
+    : ''
+  lastQuery.value = [query.value, catName && `分类·${catName}`].filter(Boolean).join(' / ')
+  await doSearch(query.value, searchCategoryId.value)
+}
+
+async function quickSearch(categoryId, name) {
+  searchCategoryId.value = categoryId
+  query.value = ''
+  lastQuery.value = `分类·${name}`
+  await doSearch('', categoryId)
+}
+
+function clearSearch() {
+  searched.value = false
+  resultList.value = []
+  resultTotal.value = 0
+  searchCategoryId.value = 0
 }
 
 function onNav(item) {
   if (item.key === 'home') {
     activeNav.value = 'home'
+    clearSearch()
     return
   }
   showToast(`「${item.label}」页面尚未开辟`)
 }
 
 function onEntry(entry) {
-  showToast(`「${entry.title}」页面待建设`)
+  showToast(`「${entry.title}」详情页待建设`)
 }
 </script>
 
@@ -158,7 +292,7 @@ function onEntry(entry) {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 16px 28px;
+  padding: 14px 28px;
   background:
     linear-gradient(120deg, rgba(200, 16, 46, .18), rgba(18, 10, 24, .6) 60%),
     var(--card-solid);
@@ -176,9 +310,9 @@ function onEntry(entry) {
 }
 
 .nav-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   background: rgba(0, 0, 0, .35);
   border: 1px solid rgba(212, 175, 55, .55);
   display: grid;
@@ -186,14 +320,13 @@ function onEntry(entry) {
   box-shadow: 0 0 16px rgba(212, 175, 55, .25);
 }
 
-.nav-mark svg { width: 20px; height: 20px; }
-
-.nav-title { font-size: 17px; }
+.nav-mark svg { width: 18px; height: 18px; }
+.nav-title { font-size: 16px; }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -201,13 +334,13 @@ function onEntry(entry) {
 }
 
 .nav-links li {
-  padding: 8px 16px;
+  padding: 7px 14px;
   border-radius: 9px;
   font-size: 14px;
   letter-spacing: 2px;
   color: var(--text-soft);
   cursor: pointer;
-  transition: color .18s, background .18s, box-shadow .18s;
+  transition: color .18s, background .18s;
   user-select: none;
 }
 
@@ -230,17 +363,16 @@ function onEntry(entry) {
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #f7e9c4;
   background: linear-gradient(145deg, #8c0f1d, #c8102e);
   border: 1px solid var(--gold);
-  box-shadow: 0 0 12px rgba(200, 16, 46, .5);
 }
 
 .uname {
@@ -254,71 +386,68 @@ function onEntry(entry) {
 }
 
 .logout {
-  padding: 7px 14px;
+  padding: 6px 12px;
   border: 1px solid var(--border-strong);
-  border-radius: 9px;
+  border-radius: 8px;
   background: rgba(12, 8, 18, .6);
   color: var(--text-soft);
   font-family: inherit;
   font-size: 13px;
   letter-spacing: 2px;
   cursor: pointer;
-  transition: color .18s, border-color .18s, background .18s;
+  transition: color .18s, border-color .18s;
 }
 
 .logout:hover {
   color: var(--gold-soft);
   border-color: var(--gold);
-  background: rgba(212, 175, 55, .10);
 }
 
-/* ===== 主视觉 + 搜索栏 ===== */
+/* ===== 主视觉 + 搜索 ===== */
 .hero {
-  position: relative;
+  padding: 34px 32px 28px;
   text-align: center;
-  padding: 56px 32px 48px;
   background:
-    radial-gradient(120% 90% at 50% -20%, rgba(200, 16, 46, .28), transparent 60%),
-    radial-gradient(80% 60% at 80% 120%, rgba(123, 15, 29, .30), transparent 60%);
-  overflow: hidden;
+    radial-gradient(120% 90% at 50% -20%, rgba(200, 16, 46, .24), transparent 60%),
+    radial-gradient(80% 60% at 80% 120%, rgba(123, 15, 29, .26), transparent 60%);
+}
+
+.hero-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
 }
 
 .hero-seal {
-  width: 66px;
-  height: 66px;
-  margin: 0 auto 22px;
-  border-radius: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 40px;
+  font-size: 28px;
   font-weight: 700;
   color: #f7e9c4;
   background: linear-gradient(145deg, #8c0f1d, #c8102e);
   border: 2px solid var(--gold);
-  box-shadow: 0 6px 22px rgba(200, 16, 46, .5), inset 0 0 12px rgba(0, 0, 0, .35);
+  box-shadow: 0 4px 18px rgba(200, 16, 46, .5), inset 0 0 10px rgba(0, 0, 0, .35);
   transform: rotate(-6deg);
+  flex-shrink: 0;
 }
 
 .hero h1 {
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 30px;
-  line-height: 1.4;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: 4px;
   color: #f3e8d6;
   text-shadow: 0 2px 18px rgba(200, 16, 46, .45);
-}
-
-.hero-sub {
-  margin-top: 12px;
-  font-size: 14px;
-  letter-spacing: 2px;
-  color: rgba(236, 230, 245, .72);
+  margin: 0;
 }
 
 .search {
-  margin: 34px auto 0;
+  margin: 24px auto 0;
   max-width: 640px;
 }
 
@@ -348,7 +477,8 @@ function onEntry(entry) {
 
 .search-input {
   flex: 1;
-  height: 44px;
+  min-width: 0;
+  height: 42px;
   border: 0;
   background: transparent;
   outline: none;
@@ -359,9 +489,22 @@ function onEntry(entry) {
 
 .search-input::placeholder { color: var(--text-dim); }
 
+.search-cat {
+  height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: rgba(12, 8, 18, .8);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 0 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .search-btn {
-  height: 44px;
-  padding: 0 26px;
+  height: 42px;
+  padding: 0 24px;
   border: 1px solid rgba(212, 175, 55, .5);
   border-radius: 10px;
   cursor: pointer;
@@ -373,67 +516,253 @@ function onEntry(entry) {
   letter-spacing: 4px;
   box-shadow: 0 4px 18px rgba(200, 16, 46, .4), inset 0 0 10px rgba(0, 0, 0, .3);
   transition: transform .15s, filter .2s;
+  flex-shrink: 0;
 }
 
 .search-btn:hover { transform: translateY(-1px); filter: brightness(1.12); }
 .search-btn:active { transform: translateY(0); }
 
 .search-hint {
-  margin-top: 12px;
+  margin-top: 10px;
   font-size: 13px;
   letter-spacing: 1px;
   color: var(--text-soft);
 }
 
-/* ===== 快速入口 ===== */
-.entries {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  padding: 8px 32px 40px;
-}
+.search-error { color: #e23a4e; }
 
-.entry-card {
-  padding: 22px 20px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: rgba(12, 8, 18, .55);
-  cursor: pointer;
-  transition: transform .15s, border-color .18s, box-shadow .2s, background .18s;
-}
+/* ===== 通用区块头 ===== */
+section { padding: 6px 32px 22px; }
 
-.entry-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--gold);
-  background: rgba(28, 18, 36, .7);
-  box-shadow: 0 10px 28px rgba(200, 16, 46, .22), 0 0 18px rgba(212, 175, 55, .14);
-}
-
-.entry-icon {
-  font-size: 30px;
-  line-height: 1;
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   margin-bottom: 14px;
-  filter: drop-shadow(0 0 8px rgba(200, 16, 46, .4));
 }
 
-.entry-card h3 {
+.section-head h2 {
   font-family: "STKaiti", "KaiTi", serif;
   font-size: 19px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   color: var(--gold-soft);
-  margin-bottom: 8px;
+  margin: 0;
 }
 
-.entry-card p {
+.section-extra {
   font-size: 13px;
-  line-height: 1.7;
   color: var(--text-soft);
   letter-spacing: 1px;
 }
 
+.clear-btn {
+  margin-left: 10px;
+  padding: 2px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s;
+}
+
+.clear-btn:hover { color: var(--gold-soft); border-color: var(--gold); }
+
+/* ===== 分类导航 ===== */
+.cats { padding-top: 18px; }
+
+.cat-chips {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.cat-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(12, 8, 18, .55);
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform .15s, border-color .18s, background .18s;
+}
+
+.cat-chip:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  background: rgba(28, 18, 36, .7);
+}
+
+.cat-chip.active {
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(140, 15, 29, .45), rgba(200, 16, 46, .3));
+  box-shadow: 0 0 14px rgba(200, 16, 46, .3);
+}
+
+.cat-icon { font-size: 22px; line-height: 1; }
+
+.cat-name {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 15px;
+  letter-spacing: 2px;
+  color: var(--gold-soft);
+}
+
+.cat-count { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+
+/* ===== 检索结果：紧凑列表 ===== */
+.results { border-top: 1px solid var(--border); padding-top: 18px; }
+
+.empty {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-soft);
+  letter-spacing: 1px;
+  padding: 18px 0;
+}
+
+.result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(12, 8, 18, .45);
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.result-row + .result-row { border-top: 1px solid var(--border); }
+.result-row:hover { background: rgba(28, 18, 36, .65); }
+
+.row-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
+
+.row-main { flex: 1; min-width: 0; }
+
+.row-main h3 {
+  font-size: 15px;
+  color: #f3e8d6;
+  letter-spacing: 1px;
+  margin: 0 0 3px;
+}
+
+.row-main p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-soft);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-meta {
+  font-size: 12px;
+  color: rgba(212, 175, 55, .6);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+.grade {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: #f7e9c4;
+  background: linear-gradient(135deg, rgba(140, 15, 29, .8), rgba(200, 16, 46, .6));
+  border: 1px solid rgba(212, 175, 55, .4);
+  vertical-align: middle;
+}
+
+/* ===== 热门榜 ===== */
+.hot { border-top: 1px solid var(--border); padding-top: 18px; }
+
+.hot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 14px;
+}
+
+.hot-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(12, 8, 18, .45);
+  cursor: pointer;
+  transition: border-color .18s, background .18s;
+}
+
+.hot-card:hover {
+  border-color: var(--gold);
+  background: rgba(28, 18, 36, .65);
+}
+
+.rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-soft);
+  background: rgba(212, 175, 55, .10);
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.rank.top {
+  color: #f7e9c4;
+  background: linear-gradient(145deg, #8c0f1d, #c8102e);
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(200, 16, 46, .4);
+}
+
+.hot-body { flex: 1; min-width: 0; }
+
+.hot-body h3 {
+  font-size: 15px;
+  color: #f3e8d6;
+  letter-spacing: 1px;
+  margin: 0 0 4px;
+}
+
+.hot-body p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-soft);
+  margin: 0 0 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hot-meta { font-size: 12px; color: rgba(212, 175, 55, .6); letter-spacing: 1px; }
+
+/* ===== 页脚 ===== */
 .home-foot {
-  padding: 18px 32px 22px;
+  padding: 16px 32px 20px;
   text-align: center;
   font-size: 12px;
   letter-spacing: 1px;
@@ -443,25 +772,19 @@ function onEntry(entry) {
 
 /* ===== 响应式 ===== */
 @media (max-width: 780px) {
-  .navbar {
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 14px 18px;
-  }
-  .nav-links {
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
+  .navbar { flex-wrap: wrap; gap: 12px; padding: 12px 18px; }
+  .nav-links { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
   .nav-user { margin-left: auto; }
-  .entries { grid-template-columns: repeat(2, 1fr); padding: 8px 18px 32px; }
-  .hero { padding: 40px 18px 36px; }
-  .hero h1 { font-size: 24px; letter-spacing: 2px; }
+  .hero { padding: 26px 18px 22px; }
+  .hero h1 { font-size: 20px; letter-spacing: 2px; }
+  section { padding-left: 18px; padding-right: 18px; }
+  .cat-chips { grid-template-columns: repeat(3, 1fr); }
+  .hot-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
-  .entries { grid-template-columns: 1fr; }
+  .cat-chips { grid-template-columns: repeat(2, 1fr); }
   .uname { display: none; }
+  .row-meta { display: none; }
 }
 </style>
