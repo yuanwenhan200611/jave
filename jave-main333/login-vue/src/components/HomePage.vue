@@ -1,5 +1,9 @@
 <template>
   <div class="home">
+    <!-- 背景层：原图 16:10，按主页比例等比铺满，不裁切留白 -->
+    <div class="home-bg" aria-hidden="true"></div>
+    <div class="home-veil" aria-hidden="true"></div>
+
     <!-- 导航栏 -->
     <nav class="navbar">
       <div class="nav-brand">
@@ -56,9 +60,23 @@
               {{ cat.prefix }}{{ cat.name }}
             </option>
           </select>
-          <button class="search-btn" type="submit">搜 索</button>
+          <button class="search-btn" type="submit" :disabled="searchLoading">
+            {{ searchLoading ? '搜寻中' : '搜 索' }}
+          </button>
         </div>
         <p v-if="searchError" class="search-hint search-error">{{ searchError }}</p>
+
+        <!-- 热搜词 -->
+        <div v-if="hotKeywords.length" class="hot-words">
+          <span class="hot-words-label">热门词条</span>
+          <button
+            v-for="w in hotKeywords"
+            :key="w.keyword"
+            type="button"
+            class="hot-word"
+            @click="clickKeyword(w.keyword)"
+          >{{ w.keyword }}</button>
+        </div>
       </form>
     </header>
 
@@ -72,7 +90,7 @@
           type="button"
           class="cat-chip"
           :class="{ active: searchCategoryId === c.id && searched }"
-          @click="quickSearch(c.id, c.name)"
+          @click="quickSearch(c.id)"
         >
           <span class="cat-icon">{{ c.icon }}</span>
           <span class="cat-name">{{ c.name }}</span>
@@ -89,6 +107,19 @@
           <button class="clear-btn" type="button" @click="clearSearch">清空</button>
         </span>
       </div>
+
+      <!-- 排序 -->
+      <div class="sort-bar">
+        <button
+          v-for="s in sortOptions"
+          :key="s.value"
+          type="button"
+          class="sort-btn"
+          :class="{ active: searchSort === s.value }"
+          @click="changeSort(s.value)"
+        >{{ s.label }}</button>
+      </div>
+
       <p v-if="!resultList.length" class="empty">未寻得相关之物，换个词条试试</p>
       <ul v-else class="result-list">
         <li v-for="item in resultList" :key="item.id" class="result-row" @click="onEntry(item)">
@@ -97,9 +128,16 @@
             <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
             <p>{{ item.description }}</p>
           </div>
-          <span class="row-meta">{{ categoryNameById(item.categoryId) }}</span>
+          <span class="row-meta">{{ item.categoryName || categoryNameById(item.categoryId) }}</span>
         </li>
       </ul>
+
+      <!-- 后端分页 -->
+      <div v-if="pages > 1" class="pager">
+        <button type="button" class="pager-btn" :disabled="page <= 1" @click="gotoPage(page - 1)">上一页</button>
+        <span class="pager-info">第 {{ page }} / {{ pages }} 页</span>
+        <button type="button" class="pager-btn" :disabled="page >= pages" @click="gotoPage(page + 1)">下一页</button>
+      </div>
     </section>
 
     <!-- 热门榜 -->
@@ -122,6 +160,36 @@
       </div>
     </section>
 
+    <!-- 条目详情弹层：数据来自后端 GET /api/home/item/{id}（同时浏览量 +1） -->
+    <div v-if="detail" class="detail-mask" @click.self="closeDetail">
+      <div class="detail-panel">
+        <button class="detail-close" type="button" @click="closeDetail">✕</button>
+        <div class="detail-head">
+          <span class="detail-icon">{{ detail.icon || '✦' }}</span>
+          <div>
+            <h2>{{ detail.title }}<small v-if="detail.grade" class="grade">{{ detail.grade }}</small></h2>
+            <p class="detail-crumb">{{ detail.categoryPath }}</p>
+          </div>
+        </div>
+        <p v-if="detailLoading" class="empty">探查中……</p>
+        <p v-else class="detail-desc">{{ detail.description }}</p>
+        <p class="detail-meta">{{ detail.viewCount }} 人阅过</p>
+
+        <div v-if="related.length" class="detail-related">
+          <h3>同类之物</h3>
+          <div class="related-chips">
+            <button
+              v-for="r in related"
+              :key="r.id"
+              type="button"
+              class="related-chip"
+              @click="onEntry(r)"
+            >{{ r.icon || '✦' }} {{ r.title }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <footer class="home-foot">© 2026 逆天魔宗 · 堕魔者，永生不灭</footer>
   </div>
 </template>
@@ -129,7 +197,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useToast } from '../composables/useToast'
-import { fetchHomeSummary, searchItems } from '../api/home'
+import {
+  fetchHomeSummary,
+  fetchHotKeywords,
+  fetchItemDetail,
+  fetchRelatedItems,
+  searchItems
+} from '../api/home'
 
 const props = defineProps({
   username: {
@@ -148,6 +222,29 @@ const searched = ref(false)
 const lastQuery = ref('')
 const searchCategoryId = ref(0)
 const searchError = ref('')
+const searchSort = ref('hot')
+const searchLoading = ref(false)
+
+// 分页（后端分页，total/pages 由接口返回）
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const pages = ref(0)
+
+// 热词
+const hotKeywords = ref([])
+
+const sortOptions = [
+  { value: 'hot', label: '最热' },
+  { value: 'new', label: '最新' },
+  { value: 'grade', label: '品阶' },
+  { value: 'title', label: '名称' }
+]
+
+// 详情弹层
+const detail = ref(null)
+const related = ref([])
+const detailLoading = ref(false)
 
 const navItems = [
   { key: 'home', label: '首页' },
@@ -160,9 +257,10 @@ const navItems = [
 // 后端首页数据
 const categories = ref([])
 const hotItems = ref([])
+const latestItems = ref([])
 const allCategories = ref([])
 const resultList = ref([])
-const resultTotal = ref(0)
+const resultTotal = computed(() => total.value)
 const categoryCounts = ref({})
 
 const avatarChar = computed(() => (props.username ? props.username.slice(0, 1).toUpperCase() : '道'))
@@ -209,6 +307,7 @@ async function loadSummary() {
     const data = await fetchHomeSummary()
     categories.value = data.categories || []
     hotItems.value = data.hotItems || []
+    latestItems.value = data.latestItems || []
     categoryCounts.value = data.categoryCounts || {}
     allCategories.value = flatten(categories.value)
   } catch (e) {
@@ -216,18 +315,44 @@ async function loadSummary() {
   }
 }
 
-onMounted(loadSummary)
-
-async function doSearch(keyword, categoryId) {
+async function loadHotKeywords() {
   try {
-    const data = await searchItems(keyword, categoryId || undefined)
+    hotKeywords.value = (await fetchHotKeywords(8, 30)) || []
+  } catch {
+    hotKeywords.value = []
+  }
+}
+
+onMounted(() => {
+  loadSummary()
+  loadHotKeywords()
+})
+
+/**
+ * 统一走后端分页搜索。
+ * 后端会返回 list / total / page / size / pages，前端不再本地切片。
+ */
+async function doSearch({ keyword = '', categoryId = 0, sort = searchSort.value, toPage = 1 } = {}) {
+  searchLoading.value = true
+  try {
+    const data = await searchItems({
+      keyword,
+      categoryId: categoryId || undefined,
+      sort,
+      page: toPage,
+      size: pageSize.value
+    })
     resultList.value = data.list || []
-    resultTotal.value = data.total || 0
+    total.value = data.total || 0
+    pages.value = data.pages || 0
+    page.value = data.page || toPage
     searched.value = true
     searchError.value = ''
   } catch (e) {
     searched.value = false
     searchError.value = e.message || '检索失败'
+  } finally {
+    searchLoading.value = false
   }
 }
 
@@ -240,20 +365,50 @@ async function onSearch() {
     ? (flatCategories.value.find(c => c.id === searchCategoryId.value)?.name || '')
     : ''
   lastQuery.value = [query.value, catName && `分类·${catName}`].filter(Boolean).join(' / ')
-  await doSearch(query.value, searchCategoryId.value)
+  await doSearch({ keyword: query.value, categoryId: searchCategoryId.value, toPage: 1 })
+  // 搜索后刷新热词（这次搜索已被后端记入日志）
+  loadHotKeywords()
 }
 
-async function quickSearch(categoryId, name) {
+async function quickSearch(categoryId) {
   searchCategoryId.value = categoryId
   query.value = ''
+  const name = flatCategories.value.find(c => c.id === categoryId)?.name || ''
   lastQuery.value = `分类·${name}`
-  await doSearch('', categoryId)
+  await doSearch({ keyword: '', categoryId, toPage: 1 })
+}
+
+async function changeSort(sort) {
+  if (searchSort.value === sort) return
+  searchSort.value = sort
+  if (searched.value) {
+    await doSearch({ keyword: query.value, categoryId: searchCategoryId.value, sort, toPage: 1 })
+  }
+}
+
+async function gotoPage(p) {
+  if (p < 1 || p > pages.value || p === page.value) return
+  await doSearch({
+    keyword: query.value,
+    categoryId: searchCategoryId.value,
+    sort: searchSort.value,
+    toPage: p
+  })
+}
+
+function clickKeyword(word) {
+  query.value = word
+  searchCategoryId.value = 0
+  lastQuery.value = word
+  doSearch({ keyword: word, categoryId: 0, toPage: 1 })
 }
 
 function clearSearch() {
   searched.value = false
   resultList.value = []
-  resultTotal.value = 0
+  total.value = 0
+  pages.value = 0
+  page.value = 1
   searchCategoryId.value = 0
 }
 
@@ -266,15 +421,37 @@ function onNav(item) {
   showToast(`「${item.label}」页面尚未开辟`)
 }
 
-function onEntry(entry) {
-  showToast(`「${entry.title}」详情页待建设`)
+/** 打开详情弹层：后端 GET /item/{id} 会顺带把浏览量 +1 */
+async function onEntry(entry) {
+  detailLoading.value = true
+  detail.value = { ...entry }
+  related.value = []
+  try {
+    const [d, rel] = await Promise.all([
+      fetchItemDetail(entry.id),
+      fetchRelatedItems(entry.id, 4).catch(() => [])
+    ])
+    detail.value = d
+    related.value = rel || []
+  } catch (e) {
+    showToast(e.message || '详情加载失败')
+  } finally {
+    detailLoading.value = false
+  }
 }
+
+function closeDetail() {
+  detail.value = null
+  related.value = []
+}
+
 </script>
 
 <style scoped>
 .home {
+  position: relative;
   width: 100%;
-  max-width: 1120px;
+  max-width: 1320px;
   margin: 0 auto;
   background: var(--card);
   border: 1px solid var(--border-strong);
@@ -287,6 +464,67 @@ function onEntry(entry) {
   backdrop-filter: blur(6px);
 }
 
+/* ===== 背景图 =====
+   原图 1728×1080（严格 16:10）。
+   主图用 contain 完整呈现（画面主体不裁切、不变形）；
+   面板宽高比与 16:10 有偏差时，空隙由底层同图放大模糊补满，视觉无缝。 */
+.home-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* 底层：同一张图 cover + 模糊，填满比例不一致留下的空隙 */
+.home-bg::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  background-image: url('../assets/home-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  filter: blur(26px) brightness(.40) saturate(1.15);
+  transform: scale(1.08);
+}
+
+/* 主图：contain 完整显示，绝不裁切 */
+.home-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url('../assets/home-bg.jpg');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* 尽量保留原图亮度与清晰度，仅做轻微压暗以托住前景文字 */
+  filter: brightness(.94) saturate(1.06) contrast(1.04);
+}
+
+/* 可读性遮罩：单独一层，避免与图片层抢 ::before / ::after。
+   只在首屏（导航 + 标题 + 搜索）稍重，下方大面积留清晰；
+   文字可读性主要靠卡片自身的半透明底色来保证。 */
+.home-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg,
+      rgba(10, 7, 16, .62) 0%,
+      rgba(10, 7, 16, .30) 18%,
+      rgba(10, 7, 16, .10) 34%,
+      rgba(10, 7, 16, .12) 62%,
+      rgba(10, 7, 16, .48) 88%,
+      rgba(10, 7, 16, .72) 100%);
+}
+
+/* 前景所有区块需压在背景层之上 */
+.home > :not(.home-bg):not(.home-veil) {
+  position: relative;
+  z-index: 1;
+}
+
+
 /* ===== 导航栏 ===== */
 .navbar {
   display: flex;
@@ -294,8 +532,9 @@ function onEntry(entry) {
   gap: 24px;
   padding: 14px 28px;
   background:
-    linear-gradient(120deg, rgba(200, 16, 46, .18), rgba(18, 10, 24, .6) 60%),
-    var(--card-solid);
+    linear-gradient(120deg, rgba(200, 16, 46, .22), rgba(18, 10, 24, .72) 60%),
+    rgba(12, 8, 18, .55);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border-strong);
 }
 
@@ -408,8 +647,8 @@ function onEntry(entry) {
   padding: 34px 32px 28px;
   text-align: center;
   background:
-    radial-gradient(120% 90% at 50% -20%, rgba(200, 16, 46, .24), transparent 60%),
-    radial-gradient(80% 60% at 80% 120%, rgba(123, 15, 29, .26), transparent 60%);
+    radial-gradient(120% 90% at 50% -20%, rgba(200, 16, 46, .28), transparent 62%),
+    linear-gradient(180deg, rgba(10, 7, 16, .30), rgba(10, 7, 16, .55));
 }
 
 .hero-head {
@@ -588,7 +827,7 @@ section { padding: 6px 32px 22px; }
   padding: 14px 8px 12px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(12, 8, 18, .55);
+  background: rgba(12, 8, 18, .72);
   cursor: pointer;
   font-family: inherit;
   transition: transform .15s, border-color .18s, background .18s;
@@ -642,7 +881,7 @@ section { padding: 6px 32px 22px; }
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  background: rgba(12, 8, 18, .45);
+  background: rgba(12, 8, 18, .66);
   cursor: pointer;
   transition: background .15s;
 }
@@ -706,7 +945,7 @@ section { padding: 6px 32px 22px; }
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(12, 8, 18, .45);
+  background: rgba(12, 8, 18, .66);
   cursor: pointer;
   transition: border-color .18s, background .18s;
 }
@@ -760,6 +999,210 @@ section { padding: 6px 32px 22px; }
 
 .hot-meta { font-size: 12px; color: rgba(212, 175, 55, .6); letter-spacing: 1px; }
 
+/* ===== 热搜词 ===== */
+.hot-words {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.hot-words-label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: rgba(212, 175, 55, .65);
+}
+
+.hot-word {
+  padding: 3px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(12, 8, 18, .5);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.hot-word:hover {
+  color: var(--gold-soft);
+  border-color: var(--gold);
+  background: rgba(200, 16, 46, .18);
+}
+
+/* ===== 排序条 ===== */
+.sort-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.sort-btn {
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(12, 8, 18, .5);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.sort-btn:hover { color: var(--gold-soft); border-color: var(--gold); }
+
+.sort-btn.active {
+  color: #f7e9c4;
+  border-color: var(--gold);
+  background: linear-gradient(135deg, rgba(140, 15, 29, .7), rgba(200, 16, 46, .5));
+  box-shadow: 0 0 12px rgba(200, 16, 46, .3);
+}
+
+/* ===== 分页 ===== */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.pager-btn {
+  padding: 5px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: rgba(12, 8, 18, .6);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s;
+}
+
+.pager-btn:hover:not(:disabled) { color: var(--gold-soft); border-color: var(--gold); }
+.pager-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.pager-info { font-size: 12px; color: var(--text-soft); letter-spacing: 1px; }
+
+.search-btn:disabled { opacity: .7; cursor: wait; transform: none; }
+
+/* ===== 详情弹层 ===== */
+.detail-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 4, 9, .78);
+  backdrop-filter: blur(4px);
+}
+
+.detail-panel {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 26px 28px;
+  border: 1px solid var(--gold);
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 80% at 50% -20%, rgba(200, 16, 46, .28), transparent 60%),
+    var(--card-solid, #150d1b);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, .18), 0 30px 80px rgba(0, 0, 0, .7);
+}
+
+.detail-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.detail-close:hover { color: var(--gold-soft); border-color: var(--gold); }
+
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-right: 34px;
+}
+
+.detail-icon { font-size: 34px; line-height: 1.1; flex-shrink: 0; }
+
+.detail-head h2 {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #f3e8d6;
+  margin: 0 0 6px;
+}
+
+.detail-crumb {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .7);
+  margin: 0;
+}
+
+.detail-desc {
+  margin: 18px 0 12px;
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--text);
+}
+
+.detail-meta {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.detail-related {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.detail-related h3 {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 15px;
+  letter-spacing: 2px;
+  color: var(--gold-soft);
+  margin: 0 0 10px;
+}
+
+.related-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.related-chip {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(12, 8, 18, .72);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s;
+}
+
+.related-chip:hover { color: var(--gold-soft); border-color: var(--gold); }
+
 /* ===== 页脚 ===== */
 .home-foot {
   padding: 16px 32px 20px;
@@ -780,7 +1223,22 @@ section { padding: 6px 32px 22px; }
   section { padding-left: 18px; padding-right: 18px; }
   .cat-chips { grid-template-columns: repeat(3, 1fr); }
   .hot-grid { grid-template-columns: 1fr; }
+
+  /* 窄屏面板很高，图片若还 contain 会被压成一条细带；
+     改为 cover 铺满，视觉更有冲击力 */
+  .home-bg::after {
+    background-size: cover;
+    filter: brightness(.86) saturate(1.06);
+  }
+  .home-bg::before {
+    filter: blur(30px) brightness(.35) saturate(1.1);
+  }
+  /* 移动端卡片底色再实一点，保证小字可读 */
+  .cat-chip,
+  .hot-card,
+  .result-row { background: rgba(12, 8, 18, .82); }
 }
+
 
 @media (max-width: 480px) {
   .cat-chips { grid-template-columns: repeat(2, 1fr); }
