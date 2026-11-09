@@ -32,8 +32,14 @@ jave-main/
 
 ## 关键事实（必记）
 - **前端端口 5173**，**后端端口 8081**。前端 dev 下 `/api` 代理到 8081。
-- **前端未引入 vue-router**：`App.vue` 用 `view` 状态机切换 `'login' | 'register' | 'home'`，登录成功后 `view='home'` 跳转首页 `src/components/HomePage.vue`（含导航栏 + 搜索栏，魔宗暗色主题）。会话 `token`/`username` 存 `localStorage`，刷新不丢。首页的搜索/导航/快速入口目前仅前端占位（toast 提示），**后端检索接口与其他页面尚未接入，auth.js 的登录/注册接口保持原样**。
+- **前端未引入 vue-router**：`App.vue` 用 `view` 状态机切换 `'login' | 'register' | 'home' | 'secret' | 'skill' | 'rank' | 'forum'`，登录成功后进首页，顶部导航（共享组件 `src/components/SectNav.vue`）在五个宗门页面间切换。
   → 新增页面时继续用 `view` 状态机，或届时再引入 vue-router（需 `npm i vue-router`）。
+- **宗门四堂（2026-11-09 已上线）**：
+  - 功法阁 `SkillPage.vue`：复用 /api/home/search 按功法分类检索，分堂 tab = 功法的二级分类；
+  - 秘境 `SecretPage.vue`：「随机探秘」走 GET /api/sect/explore（随机秘境 + 奇遇文案，浏览量+1）；
+  - 宗门榜 `RankPage.vue`：GET /api/sect/rank + /api/sect/halls（sect_member 表，战力降序，前 3 名特殊高亮）；
+  - 论道 `ForumPage.vue`：GET/POST /api/forum/posts + POST /api/forum/posts/{id}/like（forum_post 表，支持最新/热议排序）。
+  → 对应建表与种子在 sql/seed_sect.sql（ensure_db.sql 已并入，start.bat 自愈无忧）。新 Mapper 必须加 @Mapper 注解，否则启动报 bean not found。
 - **后端强依赖 MySQL**：`jdbc:mysql://localhost:3306/login_db`，用户 `root`，密码 `123456`。
   → **本机已安装 MySQL 8 且开机自启**（客户端在 `C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe`）。
   `login_db` 与 `user` 表通过 `sql/login_db.sql` 建好（完整版，含 DROP，手动重建用）。
