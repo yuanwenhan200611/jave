@@ -41,11 +41,13 @@ jave-main/
   演示账号仅在缺失时插入），所以**环境重置后库被清空也能一键自愈，不用再手动跑 SQL**。
   → 演示账号 admin / test，密码均为 123456（MD5=e10adc3949ba59abbe56e057f20f883e）。
 - **MySQL 数据目录已迁到 D:（防重置丢数据）**：原 `datadir` 在 `C:\ProgramData\MySQL\...\Data`（C 盘会被重置清掉 → 之前 login_db 老是丢）。
-  **2026-10-19 已把 datadir 改到 `D:\MySQLData`**（`my.ini` 第 97 行 `datadir=D:/MySQLData`，备份 `my.ini.bak` 在同目录），
-  ACL 已授权 `NT SERVICE\MySQL80` / SYSTEM / Administrators / Everyone。**D 盘不在重置范围**，所以
-  login_db 及你自己注册的账号、连同 ruoyi 库都能跨重启保留。
-  ⚠️ 若某次重置把 my.ini 也还原成 C:（极端情况），`start.bat` 的 `ensure_db.sql` 仍会自动重建 login_db（仅演示账号），
-     应用照常可用，只是自注册账号需重新建——属兜底，正常不会触发。
+  **2026-11-09 已重新把 datadir 改到 `D:\MySQLData`**（`my.ini` 第 97 行 `datadir=D:/MySQLData`，备份 `my.ini.bak` 在同目录），
+  ACL 已授权 `NT SERVICE\MySQL80` / SYSTEM / Administrators / Everyone。
+  ⚠️ 历史教训：2026-11 前的一次重置把之前的 D:\MySQLData 迁移连同 my.ini 一起弄丢了，login_db 被清空、
+  前端 `login-vue/src/assets/home-bg.jpg`（未提交 git 的本地文件）也丢了，均已修复。
+  → 防丢失已做两件事：① 背景图已提交进 git（commit 83e1451）；② datadir 重新指向 D 盘（本次已验证 @@datadir=D:\MySQLData）。
+  若某次重置把 my.ini 也还原成 C:（极端情况），`start.bat` 的 `ensure_db.sql` 仍会自动重建 login_db（仅演示账号），
+  应用照常可用，只是自注册账号需重新建——属兜底，正常不会触发。
 - **工具链**（本机已具备）：Node v22、npm 10、Java Zulu 21（跑 Java17 target 没问题）、Maven 走 Wrapper。
 - **每次重启会删 `node_modules` 和 `target`**，但 `~/.m2`（Maven 仓库）和 npm 缓存**不会被删**。
   → 所以 `npm ci` 和 `mvnw` 基本是缓存命中，不会满世界重新下载（除非整台机器被重装镜像）。
