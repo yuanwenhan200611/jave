@@ -55,8 +55,9 @@ public class HomeController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String sort,
             @RequestParam(required = false, defaultValue = "1") Integer page,
-            @RequestParam(required = false, defaultValue = "10") Integer size) {
-        return Result.ok(homeService.searchPage(keyword, categoryId, sort, page, size));
+            @RequestParam(required = false, defaultValue = "10") Integer size,
+            @RequestParam(required = false) String username) {
+        return Result.ok(homeService.searchPage(keyword, categoryId, sort, page, size, username));
     }
 
     /** 搜索热词 */

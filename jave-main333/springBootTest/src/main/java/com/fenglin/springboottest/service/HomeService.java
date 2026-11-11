@@ -217,7 +217,8 @@ public class HomeService {
      * 搜索（分页）。保留原签名，内部走 {@link #searchPage}。
      */
     public Map<String, Object> search(String keyword, Long categoryId) {
-        PageResult<ContentItemVO> page = searchPage(keyword, categoryId, SORT_HOT, 1, (int) DEFAULT_PAGE_SIZE);
+        PageResult<ContentItemVO> page = searchPage(keyword, categoryId, SORT_HOT, 1,
+                (int) DEFAULT_PAGE_SIZE, null);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("total", page.getTotal());
         data.put("list", page.getList());
@@ -232,9 +233,11 @@ public class HomeService {
      * @param sort       hot(默认) / new / grade / title
      * @param pageNo     页码，从 1 开始
      * @param pageSize   每页条数，1~100，默认 10
+     * @param username   发起搜索的用户（可空，落 search_log 供洞府联动）
      */
     public PageResult<ContentItemVO> searchPage(String keyword, Long categoryId,
-                                                String sort, Integer pageNo, Integer pageSize) {
+                                                String sort, Integer pageNo, Integer pageSize,
+                                                String username) {
         long p = pageNo == null || pageNo < 1 ? 1 : pageNo;
         long s = pageSize == null || pageSize < 1 ? DEFAULT_PAGE_SIZE : Math.min(pageSize, MAX_PAGE_SIZE);
 
@@ -258,9 +261,10 @@ public class HomeService {
             }
         }
 
-        // 记录搜索日志（失败不影响主流程）
+        // 记录搜索日志（失败不影响主流程）；带上 username 供洞府「搜索足迹」联动
         if (hasKw || hasCat) {
-            writeSearchLog(kw, hasCat ? categoryId : null, (int) total);
+            writeSearchLog(kw, hasCat ? categoryId : null, (int) total,
+                    username == null || username.isBlank() ? null : username.trim());
         }
         return PageResult.of(list, total, p, s);
     }
@@ -314,7 +318,7 @@ public class HomeService {
         return kw.length() > MAX_KEYWORD_LENGTH ? kw.substring(0, MAX_KEYWORD_LENGTH) : kw;
     }
 
-    private void writeSearchLog(String keyword, Long categoryId, int resultCount) {
+    private void writeSearchLog(String keyword, Long categoryId, int resultCount, String username) {
         try {
             // 只记录带关键词的搜索（纯点分类不算搜索词）
             if (keyword == null) {
@@ -324,6 +328,7 @@ public class HomeService {
             logRow.setKeyword(keyword);
             logRow.setCategoryId(categoryId);
             logRow.setResultCount(resultCount);
+            logRow.setUsername(username);
             searchLogMapper.insert(logRow);
         } catch (Exception e) {
             log.warn("写入搜索日志失败：{}", e.getMessage());

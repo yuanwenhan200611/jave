@@ -1,7 +1,5 @@
 <template>
   <div class="page">
-    <div class="page-bg" aria-hidden="true"></div>
-
     <SectNav active="skill" :username="username" @nav="k => emit('nav', k)" @logout="emit('logout')" />
 
     <!-- 阁名 + 背景 -->
@@ -231,33 +229,18 @@ function closeDetail() {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
-  background: var(--card);
-  border: 1px solid var(--border-strong);
+  /* 半透明面板：全屏背景透出，内容靠自身卡片底色保证可读 */
+  background: rgba(8, 5, 12, .20);
+  border: 1px solid rgba(196, 154, 92, .18);
   border-radius: 22px;
   overflow: hidden;
   box-shadow:
-    0 0 0 1px rgba(212, 175, 55, .10),
-    0 30px 80px rgba(0, 0, 0, .65),
-    0 0 60px rgba(200, 16, 46, .18);
-  backdrop-filter: blur(6px);
+    0 0 0 1px rgba(212, 175, 55, .06),
+    0 24px 60px rgba(0, 0, 0, .50),
+    0 0 50px rgba(200, 16, 46, .12);
 }
 
 /* 背景图：模糊铺满，压暗托文字 */
-.page-bg {
-  position: absolute;
-  inset: -8%;
-  z-index: 0;
-  background-image: url('../assets/home-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  filter: blur(30px) brightness(.30) saturate(1.1);
-}
-
-.page > :not(.page-bg) {
-  position: relative;
-  z-index: 1;
-}
-
 /* ===== 阁名 ===== */
 .hero {
   display: flex;
@@ -392,7 +375,7 @@ function closeDetail() {
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  background: rgba(12, 8, 18, .66);
+  background: rgba(10, 7, 15, .78);
   cursor: pointer;
   transition: background .15s;
 }

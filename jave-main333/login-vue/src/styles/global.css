@@ -56,7 +56,8 @@ body {
   overflow-x: hidden;
 }
 
-/* 血月 + 煞气 的层次光晕 */
+/* 全屏背景层由 App.vue 的 .app-bg 提供（object-fit: cover 铺满视口）；
+   这里只保留一层深色兜底，避免图片加载前出现纯白闪屏。 */
 body::before {
   content: "";
   position: fixed;
@@ -64,22 +65,9 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(1100px 560px at 12% -12%, rgba(200, 16, 46, .20), transparent 60%),
-    radial-gradient(900px 520px at 112% 118%, rgba(123, 15, 29, .26), transparent 55%),
-    radial-gradient(620px 620px at 82% -6%, rgba(212, 175, 55, .07), transparent 60%),
+    radial-gradient(1100px 560px at 12% -12%, rgba(200, 16, 46, .18), transparent 60%),
+    radial-gradient(900px 520px at 112% 118%, rgba(123, 15, 29, .24), transparent 55%),
     linear-gradient(160deg, #0a0710 0%, #160c1e 50%, #0a0710 100%);
-}
-
-/* 墨点星纹 */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px);
-  background-size: 26px 26px;
-  opacity: .5;
 }
 
 #app {

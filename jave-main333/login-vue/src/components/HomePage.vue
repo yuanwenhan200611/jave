@@ -1,8 +1,6 @@
 <template>
   <div class="home">
-    <!-- 背景层：原图 16:10，按主页比例等比铺满，不裁切留白 -->
-    <div class="home-bg" aria-hidden="true"></div>
-    <div class="home-veil" aria-hidden="true"></div>
+    <!-- 背景已提升为全站全屏背景（见 styles/global.css 的 body::before/::after） -->
 
     <!-- 导航栏（共享组件：五个宗门页面统一使用） -->
     <SectNav active="home" :username="username" @nav="onNav" @logout="emit('logout')" />
@@ -167,7 +165,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import {
@@ -182,6 +180,11 @@ const props = defineProps({
   username: {
     type: String,
     default: '道友'
+  },
+  // 洞府「再寻一次」联动：父组件传入关键词，自动执行一次搜索
+  searchSeed: {
+    type: String,
+    default: ''
   }
 })
 
@@ -293,6 +296,16 @@ onMounted(() => {
   loadHotKeywords()
 })
 
+// 洞府「再寻一次」：父组件改变 searchSeed 时自动搜索
+watch(() => props.searchSeed, (kw) => {
+  if (!kw) return
+  query.value = kw
+  searchCategoryId.value = 0
+  searched.value = true
+  lastQuery.value = kw
+  doSearch({ keyword: kw, categoryId: 0, toPage: 1 })
+})
+
 /**
  * 统一走后端分页搜索。
  * 后端会返回 list / total / page / size / pages，前端不再本地切片。
@@ -305,7 +318,9 @@ async function doSearch({ keyword = '', categoryId = 0, sort = searchSort.value,
       categoryId: categoryId || undefined,
       sort,
       page: toPage,
-      size: pageSize.value
+      size: pageSize.value,
+      // 搜索足迹联动：带上当前登录用户，后端落 search_log.username
+      username: props.username
     })
     resultList.value = data.list || []
     total.value = data.total || 0
@@ -419,77 +434,16 @@ function closeDetail() {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
-  background: var(--card);
-  border: 1px solid var(--border-strong);
+  /* 半透明面板：让全屏背景透出来，前景内容靠自身遮罩与卡片底色保证可读 */
+  background: rgba(8, 5, 12, .20);
+  border: 1px solid rgba(196, 154, 92, .18);
   border-radius: 22px;
   overflow: hidden;
   box-shadow:
-    0 0 0 1px rgba(212, 175, 55, .10),
-    0 30px 80px rgba(0, 0, 0, .65),
-    0 0 60px rgba(200, 16, 46, .18);
-  backdrop-filter: blur(6px);
+    0 0 0 1px rgba(212, 175, 55, .06),
+    0 24px 60px rgba(0, 0, 0, .50),
+    0 0 50px rgba(200, 16, 46, .12);
 }
-
-/* ===== 背景图 =====
-   原图 1728×1080（严格 16:10）。
-   主图用 contain 完整呈现（画面主体不裁切、不变形）；
-   面板宽高比与 16:10 有偏差时，空隙由底层同图放大模糊补满，视觉无缝。 */
-.home-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-}
-
-/* 底层：同一张图 cover + 模糊，填满比例不一致留下的空隙 */
-.home-bg::before {
-  content: "";
-  position: absolute;
-  inset: -8%;
-  background-image: url('../assets/home-bg.jpg');
-  background-size: cover;
-  background-position: center;
-  filter: blur(26px) brightness(.40) saturate(1.15);
-  transform: scale(1.08);
-}
-
-/* 主图：contain 完整显示，绝不裁切 */
-.home-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url('../assets/home-bg.jpg');
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  /* 尽量保留原图亮度与清晰度，仅做轻微压暗以托住前景文字 */
-  filter: brightness(.94) saturate(1.06) contrast(1.04);
-}
-
-/* 可读性遮罩：单独一层，避免与图片层抢 ::before / ::after。
-   只在首屏（导航 + 标题 + 搜索）稍重，下方大面积留清晰；
-   文字可读性主要靠卡片自身的半透明底色来保证。 */
-.home-veil {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg,
-      rgba(10, 7, 16, .62) 0%,
-      rgba(10, 7, 16, .30) 18%,
-      rgba(10, 7, 16, .10) 34%,
-      rgba(10, 7, 16, .12) 62%,
-      rgba(10, 7, 16, .48) 88%,
-      rgba(10, 7, 16, .72) 100%);
-}
-
-/* 前景所有区块需压在背景层之上 */
-.home > :not(.home-bg):not(.home-veil) {
-  position: relative;
-  z-index: 1;
-}
-
 
 /* ===== 主视觉 + 搜索 ===== */
 .hero {
@@ -730,7 +684,7 @@ section { padding: 6px 32px 22px; }
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  background: rgba(12, 8, 18, .66);
+  background: rgba(10, 7, 15, .78);
   cursor: pointer;
   transition: background .15s;
 }
@@ -794,7 +748,7 @@ section { padding: 6px 32px 22px; }
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(12, 8, 18, .66);
+  background: rgba(10, 7, 15, .78);
   cursor: pointer;
   transition: border-color .18s, background .18s;
 }
@@ -1070,16 +1024,8 @@ section { padding: 6px 32px 22px; }
   .cat-chips { grid-template-columns: repeat(3, 1fr); }
   .hot-grid { grid-template-columns: 1fr; }
 
-  /* 窄屏面板很高，图片若还 contain 会被压成一条细带；
-     改为 cover 铺满，视觉更有冲击力 */
-  .home-bg::after {
-    background-size: cover;
-    filter: brightness(.86) saturate(1.06);
-  }
-  .home-bg::before {
-    filter: blur(30px) brightness(.35) saturate(1.1);
-  }
-  /* 移动端卡片底色再实一点，保证小字可读 */
+  /* 移动端面板底色再实一点，保证小字可读 */
+  .home { background: rgba(8, 5, 12, .62); }
   .cat-chip,
   .hot-card,
   .result-row { background: rgba(12, 8, 18, .82); }

@@ -23,7 +23,7 @@
     </ul>
 
     <div class="nav-user">
-      <span class="avatar">{{ avatarChar }}</span>
+      <span class="avatar" title="进入洞府" @click="go('profile')">{{ avatarChar }}</span>
       <span class="uname">{{ username }}</span>
       <button class="logout" type="button" @click="emit('logout')">退 出</button>
     </div>
@@ -45,7 +45,8 @@ const navItems = [
   { key: 'secret', label: '秘境' },
   { key: 'skill', label: '功法阁' },
   { key: 'rank', label: '宗门榜' },
-  { key: 'forum', label: '论道' }
+  { key: 'forum', label: '论道' },
+  { key: 'profile', label: '洞府' }
 ]
 
 const avatarChar = computed(() => (props.username ? props.username.slice(0, 1).toUpperCase() : '道'))
@@ -60,12 +61,10 @@ function go(key) {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 14px 28px;
-  background:
-    linear-gradient(120deg, rgba(200, 16, 46, .22), rgba(18, 10, 24, .72) 60%),
-    rgba(12, 8, 18, .55);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border-strong);
+  padding: 16px 28px 10px;
+  /* 无底色导航条：不再压一条背景色带，直接融入全屏背景 */
+  background: transparent;
+  border-bottom: none;
 }
 
 .nav-brand {
@@ -108,7 +107,8 @@ function go(key) {
   border-radius: 9px;
   font-size: 14px;
   letter-spacing: 2px;
-  color: var(--text-soft);
+  color: rgba(233, 221, 205, .75);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .55);
   cursor: pointer;
   transition: color .18s, background .18s;
   user-select: none;
@@ -116,7 +116,7 @@ function go(key) {
 
 .nav-links li:hover {
   color: var(--gold-soft);
-  background: rgba(212, 175, 55, .10);
+  background: rgba(212, 175, 55, .12);
 }
 
 .nav-links li.active {
@@ -143,7 +143,11 @@ function go(key) {
   color: #f7e9c4;
   background: linear-gradient(145deg, #8c0f1d, #c8102e);
   border: 1px solid var(--gold);
+  cursor: pointer;
+  transition: box-shadow .18s;
 }
+
+.avatar:hover { box-shadow: 0 0 14px rgba(212, 175, 55, .55); }
 
 .uname {
   font-size: 13px;
@@ -176,6 +180,8 @@ function go(key) {
 @media (max-width: 780px) {
   .navbar { flex-wrap: wrap; gap: 12px; padding: 12px 18px; }
   .nav-links { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+  /* 六个导航项在窄屏需保持单行（横向滚动），否则文字会被挤成竖排 */
+  .nav-links li { white-space: nowrap; padding: 6px 12px; font-size: 13px; letter-spacing: 1px; }
   .nav-user { margin-left: auto; }
   .uname { display: none; }
 }

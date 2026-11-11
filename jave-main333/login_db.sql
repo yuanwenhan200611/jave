@@ -11,7 +11,7 @@
  Target Server Version : 80039 (8.0.39)
  File Encoding         : 65001
 
- Date: 09/11/2026 11:58:32
+ Date: 11/11/2026 09:57:56
 */
 
 SET NAMES utf8mb4;
@@ -32,7 +32,7 @@ CREATE TABLE `category`  (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '鍒涘缓鏃堕棿',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_parent`(`parent_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '棣栭〉鍒嗙骇鍒嗙被琛' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '棣栭〉鍒嗙骇鍒嗙被琛' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of category
@@ -72,7 +72,7 @@ CREATE TABLE `content_item`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_category`(`category_id` ASC) USING BTREE,
   INDEX `idx_title`(`title` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 162 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '棣栭〉鍐呭?鏉＄洰琛' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 162 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '棣栭〉鍐呭?鏉＄洰琛' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of content_item
@@ -85,7 +85,7 @@ INSERT INTO `content_item` VALUES (5, '玄龟息法', '吞吐迟缓如龟，可�
 INSERT INTO `content_item` VALUES (6, '焚身决', '以真火自焚其身，焚去凡胎浊骨，浴火一遭，胜修十年苦功。', 8, '玄阶', '🔥', 5680, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (7, '冰魄寒体', '久居极北寒渊，以身饲冰，血凝成霜，举手投足皆是万里冰封。', 8, '地阶', '❄️', 7010, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (8, '万木回春体', '借草木生机淬体，断肢可续，重伤自愈，唯惧烈火焚林。', 8, '黄阶', '🌿', 3890, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (9, '修罗战体', '以杀养体，每斩一敌肉躯便厚重一分，杀满千敌可徒手撕蛟。', 8, '天阶', '🗡️', 9451, 1, '2026-11-09 10:54:53', '2026-11-09 11:54:23');
+INSERT INTO `content_item` VALUES (9, '修罗战体', '以杀养体，每斩一敌肉躯便厚重一分，杀满千敌可徒手撕蛟。', 8, '天阶', '🗡️', 9456, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:45');
 INSERT INTO `content_item` VALUES (10, '紫府真形', '观想紫府神宫，将肉身炼作道场，内蕴一方小世界，坚不可摧。', 8, '地阶', '🔮', 7260, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (11, '龙象大力诀', '每日子时扛石磨骨，积九牛二虎之力于双臂，力可撼岳。', 8, '玄阶', '🐘', 5480, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (12, '枯荣禅体', '一念枯、一念荣，枯时如朽木可受万击，荣时生机暴涨还以重拳。', 8, '地阶', '🍂', 6730, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
@@ -103,27 +103,27 @@ INSERT INTO `content_item` VALUES (26, '寒潭静照法', '心如寒潭映月，
 INSERT INTO `content_item` VALUES (27, '劫火焚心经', '每夜观想劫火焚心，焚去怯懦，此后临阵不惧、赴死不退。', 9, '地阶', '🔥', 6890, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (31, '不周山墟', '天柱折处，残峰悬空，山腹藏有上古神魔断骨，机缘与杀机并存。', 10, '天阶', '⛰️', 9560, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (32, '归墟海眼', '万水归流之尽头，海水倒灌天穹，深处可闻先民钟鸣。', 10, '天阶', '🌊', 9280, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (33, '枯骨荒原', '白骨堆积成丘，风过如万人低语，昼夜颠倒，尸傀游荡。', 10, '玄阶', '🦴', 6340, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (33, '枯骨荒原', '白骨堆积成丘，风过如万人低语，昼夜颠倒，尸傀游荡。', 10, '玄阶', '🦴', 6342, 1, '2026-11-09 10:54:53', '2026-11-11 09:18:33');
 INSERT INTO `content_item` VALUES (34, '昆仑遗宫', '雪线之上的白玉宫阙，门前立无面石像，擅入者皆成石俑。', 10, '地阶', '🏯', 8120, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (35, '落星谷', '千年前天外陨星坠此，谷中石皆有星纹，触之可窥一线天机。', 10, '玄阶', '☄️', 5820, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (36, '幽冥鬼市', '子时方现的街市，鬼商贩卖活人不敢要的东西，只收寿元。', 10, '地阶', '🏮', 7630, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (35, '落星谷', '千年前天外陨星坠此，谷中石皆有星纹，触之可窥一线天机。', 10, '玄阶', '☄️', 5821, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:31');
+INSERT INTO `content_item` VALUES (36, '幽冥鬼市', '子时方现的街市，鬼商贩卖活人不敢要的东西，只收寿元。', 10, '地阶', '🏮', 7633, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:29');
 INSERT INTO `content_item` VALUES (37, '万剑坟场', '上古剑修尽殁于此，残剑插地如林，剑气未散，日夜铮鸣。', 10, '天阶', '⚔️', 9740, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (38, '沉舟海窟', '千艘古船沉于海底，船中货物保存如新，唯无人敢取。', 10, '玄阶', '🚢', 5980, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (39, '雷泽古林', '古木参天皆被雷火焚成焦炭，每逢雨夜雷声复起。', 10, '地阶', '🌩️', 7180, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (40, '血月荒祠', '每三十年血月临空，祠堂自开，祭品便是闯入者。', 10, '天阶', '🌕', 8920, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (38, '沉舟海窟', '千艘古船沉于海底，船中货物保存如新，唯无人敢取。', 10, '玄阶', '🚢', 5982, 1, '2026-11-09 10:54:53', '2026-11-11 09:18:37');
+INSERT INTO `content_item` VALUES (39, '雷泽古林', '古木参天皆被雷火焚成焦炭，每逢雨夜雷声复起。', 10, '地阶', '🌩️', 7182, 1, '2026-11-09 10:54:53', '2026-11-11 09:04:27');
+INSERT INTO `content_item` VALUES (40, '血月荒祠', '每三十年血月临空，祠堂自开，祭品便是闯入者。', 10, '天阶', '🌕', 8921, 1, '2026-11-09 10:54:53', '2026-11-11 09:18:28');
 INSERT INTO `content_item` VALUES (41, '镜湖倒影界', '湖面映出的世界，与真实世界镜像颠倒，入者易迷失归途。', 10, '玄阶', '🪞', 6150, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (42, '天梯石阶', '九万九千级石阶通往云端，每一级都记着一位陨落者的名字。', 10, '地阶', '🪜', 7841, 1, '2026-11-09 10:54:53', '2026-11-09 11:54:25');
+INSERT INTO `content_item` VALUES (42, '天梯石阶', '九万九千级石阶通往云端，每一级都记着一位陨落者的名字。', 10, '地阶', '🪜', 7844, 1, '2026-11-09 10:54:53', '2026-11-11 09:43:09');
 INSERT INTO `content_item` VALUES (46, '心魔幻阵', '闯过者道心通明，闯不过者道基尽毁，阵中映出的全是自己最怕的模样。', 11, '玄阶', '🌫️', 8210, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (47, '九重问心阶', '一阶一问，九问九答，答不出的问题会化作利刃割开记忆。', 11, '地阶', '🪜', 7560, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (48, '镜中己身', '与另一个自己交手，他知晓你所有招式的破绽——因为他就是你。', 11, '天阶', '🪞', 9030, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (49, '黄粱一梦阵', '入阵即过完一生，醒来不过半炷香，然九成人不愿醒。', 11, '地阶', '💭', 7840, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (47, '九重问心阶', '一阶一问，九问九答，答不出的问题会化作利刃割开记忆。', 11, '地阶', '🪜', 7561, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:31');
+INSERT INTO `content_item` VALUES (48, '镜中己身', '与另一个自己交手，他知晓你所有招式的破绽——因为他就是你。', 11, '天阶', '🪞', 9031, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:29');
+INSERT INTO `content_item` VALUES (49, '黄粱一梦阵', '入阵即过完一生，醒来不过半炷香，然九成人不愿醒。', 11, '地阶', '💭', 7842, 1, '2026-11-09 10:54:53', '2026-11-11 09:31:34');
 INSERT INTO `content_item` VALUES (50, '七情困锁', '喜、怒、忧、思、悲、恐、惊各成一关，破一关割一情。', 11, '玄阶', '🎭', 6420, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (51, '无相试心台', '台上无物，唯有一面空镜，照出的不是你，而是你想要成为的人。', 11, '天阶', '🔮', 8760, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (51, '无相试心台', '台上无物，唯有一面空镜，照出的不是你，而是你想要成为的人。', 11, '天阶', '🔮', 8761, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:30');
 INSERT INTO `content_item` VALUES (52, '血池炼魂场', '魂魄入血池反复煎熬，熬得住则神识凝如实质。', 11, '地阶', '🩸', 7310, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (53, '百鬼夜行图', '画中百鬼齐出，需在画中活过一夜，鸡鸣方能脱身。', 11, '玄阶', '👻', 5980, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (54, '枯井回声境', '向井中呼喊，回应你的声音会说出你此生最不堪的往事。', 11, '黄阶', '🕳️', 4270, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (55, '轮回九世劫', '九世轮回，世世横死，第九世若仍执剑，方见真我。', 11, '天阶', '⏳', 9180, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (56, '寒冰绝念关', '心跳一停，幻境自破；心若不静，先冻住的是自己。', 11, '玄阶', '❄️', 6150, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (54, '枯井回声境', '向井中呼喊，回应你的声音会说出你此生最不堪的往事。', 11, '黄阶', '🕳️', 4271, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:28');
+INSERT INTO `content_item` VALUES (55, '轮回九世劫', '九世轮回，世世横死，第九世若仍执剑，方见真我。', 11, '天阶', '⏳', 9181, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:30');
+INSERT INTO `content_item` VALUES (56, '寒冰绝念关', '心跳一停，幻境自破；心若不静，先冻住的是自己。', 11, '玄阶', '❄️', 6151, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:29');
 INSERT INTO `content_item` VALUES (57, '万念俱灰台', '所有念想被抽走的一瞬，便是破境之机，亦是道消之始。', 11, '地阶', '🌑', 7421, 1, '2026-11-09 10:54:53', '2026-11-09 11:23:29');
 INSERT INTO `content_item` VALUES (61, '九转还魂丹', '传说可令陨落修士重生的禁忌丹药，丹成之时天必降雷。', 12, '天阶', '🌿', 9610, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (62, '大回春丹', '断肢可续、五脏可补，疗伤圣药，一枚值一座小宗门。', 12, '地阶', '💊', 8320, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
@@ -149,7 +149,7 @@ INSERT INTO `content_item` VALUES (84, '破妄丹', '破除心中妄念与自我
 INSERT INTO `content_item` VALUES (85, '固境丹', '境界初成时服之，可将新生境界夯实，免跌落之虞。', 13, '地阶', '🏔️', 7210, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (86, '引灵丹', '以丹力牵引外灵入体，为筑基之人铺第一级台阶。', 13, '黄阶', '🌬️', 4050, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (87, '魂契丹', '以自身一缕神魂为契，换取一次强行冲关的机会。', 13, '天阶', '🔗', 8760, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (91, '诛仙魔剑', '饮血万千的魔道至宝，出鞘必见血，剑身常凝一层暗红。', 14, '天阶', '⚔️', 9998, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (91, '诛仙魔剑', '饮血万千的魔道至宝，出鞘必见血，剑身常凝一层暗红。', 14, '天阶', '⚔️', 9999, 1, '2026-11-09 10:54:53', '2026-11-11 09:24:17');
 INSERT INTO `content_item` VALUES (92, '斩月弯刀', '刀光如新月一线，斩出时无声无息，敌人往往先倒后闻声。', 14, '地阶', '🌙', 8360, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (93, '九幽噬魂幡', '幡动则百鬼出，吞噬敌之神魂，为魔宗镇派重器。', 14, '天阶', '🏴', 9120, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (94, '裂山锤', '一锤落下山崩地裂，重而不失准，力修最爱。', 14, '玄阶', '🔨', 6240, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
@@ -176,7 +176,7 @@ INSERT INTO `content_item` VALUES (117, '藤甲护身', '山藤老根编成，�
 INSERT INTO `content_item` VALUES (121, '赤炎火凤', '南明离火所化，羽落成焰，可载人日行十万八千里。', 16, '天阶', '🦅', 9430, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (122, '玄冰白鹤', '自极北寒渊来，双翼展开可凝云成冰，飞行无声。', 16, '地阶', '🕊️', 7280, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (123, '幽冥蝠王', '夜行如影，散播阴气遮蔽天光，最宜潜行潜入。', 16, '玄阶', '🦇', 6340, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
-INSERT INTO `content_item` VALUES (124, '金翅大鹏', '一翅九万里，振翅可起飓风，非大能者镇不住其性。', 16, '天阶', '🦅', 9660, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
+INSERT INTO `content_item` VALUES (124, '金翅大鹏', '一翅九万里，振翅可起飓风，非大能者镇不住其性。', 16, '天阶', '🦅', 9662, 1, '2026-11-09 10:54:53', '2026-11-11 08:55:49');
 INSERT INTO `content_item` VALUES (125, '云纹青鸾', '青鸾过处云雾自生，可藏行迹，性情温顺通人意。', 16, '地阶', '🪶', 7690, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (126, '赤鬃焰马', '踏火而行，四蹄过处留一串燃痕，奔行百里不歇。', 16, '玄阶', '🐎', 5870, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
 INSERT INTO `content_item` VALUES (127, '雷翼飞蛟', '生双翼，御雷而行，落雷之处焦土遍野。', 16, '天阶', '🐉', 9210, 1, '2026-11-09 10:54:53', '2026-11-09 10:54:53');
@@ -221,7 +221,7 @@ CREATE TABLE `forum_post`  (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发帖时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_post_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 18 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '论道帖' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 20 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '论道帖' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of forum_post
@@ -234,6 +234,8 @@ INSERT INTO `forum_post` VALUES (5, '千面魔君', '万剑坟场捡剑指南（
 INSERT INTO `forum_post` VALUES (6, '玉面罗刹', '血煞堂招新，只收心狠手辣者', '本堂扩招。要求：一敢下手，二不废话，三听指挥。修为不限，金丹以上可直接面见堂主。', 3900, 666, 1, '2026-11-09 11:09:35');
 INSERT INTO `forum_post` VALUES (7, '苏九黎', '心魔幻阵第七层卡了三个月，求破', '每次都死在\"故人相认\"那一幕。明知是幻，偏偏醒不过来。过来人道友给个法子，愿以丹方相谢。', 1800, 512, 1, '2026-11-09 11:09:35');
 INSERT INTO `forum_post` VALUES (8, '阿蛮', '论道规则：辱骂道友者罚扫藏经阁三月', '新来的道友看过来：论道讲的是以理服人，骂人一时爽，藏经阁扫地扫断腰。文明论道，从你我做起。', 900, 233, 1, '2026-11-09 11:09:35');
+INSERT INTO `forum_post` VALUES (18, 'test', '论血河剑意的三重境界', '第一重见血，第二重见己，第三重见天地。', 0, 0, 1, '2026-11-11 09:48:26');
+INSERT INTO `forum_post` VALUES (19, 'test', '新入宗弟子求问：幽冥堂与血煞堂如何抉择', '两堂皆有意，难以取舍。', 0, 0, 1, '2026-11-11 09:48:26');
 
 -- ----------------------------
 -- Table structure for search_log
@@ -249,7 +251,7 @@ CREATE TABLE `search_log`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_keyword`(`keyword` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '首页搜索日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '首页搜索日志表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of search_log
@@ -258,6 +260,11 @@ INSERT INTO `search_log` VALUES (1, '万剑坟场', NULL, 1, NULL, '2026-11-09 1
 INSERT INTO `search_log` VALUES (2, '诛仙魔剑', NULL, 1, NULL, '2026-11-09 10:56:42');
 INSERT INTO `search_log` VALUES (3, '金翅大鹏', NULL, 1, NULL, '2026-11-09 10:56:42');
 INSERT INTO `search_log` VALUES (4, '九转还魂丹', NULL, 1, NULL, '2026-11-09 10:56:43');
+INSERT INTO `search_log` VALUES (5, '功法', NULL, 1, 'admin', '2026-11-11 09:47:30');
+INSERT INTO `search_log` VALUES (6, '血河', NULL, 0, 'test', '2026-11-11 09:48:26');
+INSERT INTO `search_log` VALUES (7, '幽冥', NULL, 2, 'test', '2026-11-11 09:48:26');
+INSERT INTO `search_log` VALUES (8, '丹方', NULL, 1, 'test', '2026-11-11 09:48:27');
+INSERT INTO `search_log` VALUES (9, '血河', NULL, 0, 'test', '2026-11-11 09:53:28');
 
 -- ----------------------------
 -- Table structure for sect_member
@@ -275,7 +282,7 @@ CREATE TABLE `sect_member`  (
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '入门时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_member_name`(`name` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 16 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '宗门榜·弟子名录' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 16 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '宗门榜·弟子名录' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sect_member
@@ -313,5 +320,30 @@ CREATE TABLE `user`  (
 INSERT INTO `user` VALUES (1, 'admin', 'e10adc3949ba59abbe56e057f20f883e', '2026-10-19 10:59:10', '2026-10-19 10:59:10');
 INSERT INTO `user` VALUES (2, 'test', 'e10adc3949ba59abbe56e057f20f883e', '2026-10-19 10:59:10', '2026-10-19 10:59:10');
 INSERT INTO `user` VALUES (3, 'ywh', '99a541b1767705fc56501698fb871e5f', '2026-10-19 11:36:25', '2026-10-19 11:36:25');
+
+-- ----------------------------
+-- Table structure for user_profile
+-- ----------------------------
+DROP TABLE IF EXISTS `user_profile`;
+CREATE TABLE `user_profile`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键，自增',
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '用户名（唯一，关联 user.username）',
+  `nickname` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '道号（展示昵称）',
+  `icon` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '头像 emoji（后端默认 ?‍?）',
+  `realm` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '炼气' COMMENT '境界：炼气~魔尊',
+  `hall` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '血煞堂' COMMENT '所属堂口',
+  `bio` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '道语签名',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '用户个人档案表（洞府）' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of user_profile
+-- ----------------------------
+INSERT INTO `user_profile` VALUES (1, 'admin', 'admin', '🧙', '炼气', '血煞堂', '初入魔宗，道心未定。', '2026-11-11 09:47:02', '2026-11-11 09:48:49');
+INSERT INTO `user_profile` VALUES (3, 'test', 'test', '🧙', '炼气', '血煞堂', '初入魔宗，道心未定。', '2026-11-11 09:48:27', '2026-11-11 09:48:49');
+INSERT INTO `user_profile` VALUES (4, 'ywh', 'ywh', '🧙', '炼气', '血煞堂', '初入魔宗，道心未定。', '2026-11-11 09:51:35', '2026-11-11 09:51:35');
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -19,7 +19,6 @@ async function request(url, { method = 'GET' } = {}) {
   }
   return json.data
 }
-
 /** 首页展示：分类树 + 热门榜 + 最新 + 分类计数 + 品阶 */
 export function fetchHomeSummary() {
   return request('/api/home/summary')
@@ -38,13 +37,15 @@ export function fetchCategoryTree() {
  * @param {'hot'|'new'|'grade'|'title'} [opts.sort] 排序方式
  * @param {number} [opts.page] 页码，从 1 开始
  * @param {number} [opts.size] 每页条数
+ * @param {string} [opts.username] 当前登录用户（落搜索日志，供洞府「搜索足迹」联动）
  * @returns {Promise<{list:Array, total:number, page:number, size:number, pages:number}>}
  */
-export function searchItems({ keyword, categoryId, sort, page = 1, size = 10 } = {}) {
+export function searchItems({ keyword, categoryId, sort, page = 1, size = 10, username } = {}) {
   const params = new URLSearchParams()
   if (keyword) params.set('keyword', keyword)
   if (categoryId) params.set('categoryId', categoryId)
   if (sort) params.set('sort', sort)
+  if (username) params.set('username', username)
   params.set('page', page)
   params.set('size', size)
   return request(`/api/home/search?${params.toString()}`)

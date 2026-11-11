@@ -45,10 +45,11 @@ defineProps({
   position: relative;
   padding: 56px 48px;
   color: var(--text);
+  /* 薄薄一层血雾：保留宗门气质，但让全屏魔宗背景透出来 */
   background:
-    radial-gradient(130% 90% at 18% -10%, rgba(200, 16, 46, .5), transparent 58%),
-    radial-gradient(120% 80% at 110% 120%, rgba(123, 15, 29, .55), transparent 55%),
-    linear-gradient(155deg, #2a0710 0%, #4a0c18 38%, #160a18 100%);
+    radial-gradient(120% 90% at 15% -10%, rgba(200, 16, 46, .22), transparent 62%),
+    radial-gradient(120% 80% at 110% 120%, rgba(123, 15, 29, .26), transparent 58%),
+    linear-gradient(155deg, rgba(28, 6, 14, .40) 0%, rgba(56, 10, 20, .30) 40%, rgba(16, 8, 20, .48) 100%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
