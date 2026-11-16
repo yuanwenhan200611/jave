@@ -457,6 +457,7 @@ public class HomeService {
         vo.setDescription(src.getDescription());
         vo.setCategoryId(src.getCategoryId());
         vo.setGrade(src.getGrade());
+        vo.setRequiredContribution(src.getRequiredContribution() == null ? 0L : src.getRequiredContribution());
         vo.setIcon(src.getIcon());
         vo.setViewCount(src.getViewCount() == null ? 0L : src.getViewCount());
         vo.setStatus(src.getStatus());

@@ -89,9 +89,19 @@
           <small @click="go('home')" class="stat-link">去求索 →</small>
         </div>
         <div class="stat">
-          <b>{{ daysInSect }}</b>
-          <span>入宗天数</span>
-          <small class="stat-dim">自 {{ fmtDate(user.createdAt) }}</small>
+          <b>{{ stats.questDone || 0 }}<i v-if="stats.questActive" class="stat-sub">+{{ stats.questActive }} 进行中</i></b>
+          <span>任务阁功勋</span>
+          <small class="stat-link" @click="go('quest')">去接令 →</small>
+        </div>
+        <div class="stat">
+          <b>{{ stats.contributionAvailable ?? 0 }}<i class="stat-sub">累计 {{ stats.contributionTotal || 0 }} · 参悟耗 {{ stats.skillSpent || 0 }}</i></b>
+          <span>可用贡献值</span>
+          <small class="stat-dim">交差所得，未参悟者留存</small>
+        </div>
+        <div class="stat">
+          <b>{{ stats.skillCount || 0 }}</b>
+          <span>已习功法</span>
+          <small class="stat-link" @click="go('skill')">去功法阁 →</small>
         </div>
       </section>
 
@@ -103,6 +113,12 @@
           </button>
           <button type="button" class="tab" :class="{ active: tab === 'searches' }" @click="loadTab('searches')">
             🔍 求索足迹 <small class="tab-count">{{ mySearches.length }}</small>
+          </button>
+          <button type="button" class="tab" :class="{ active: tab === 'quests' }" @click="loadTab('quests')">
+            🗡️ 我的任务牌 <small class="tab-count">{{ myQuests.length }}</small>
+          </button>
+          <button type="button" class="tab" :class="{ active: tab === 'skills' }" @click="loadTab('skills')">
+            📖 已习功法 <small class="tab-count">{{ mySkills.length }}</small>
           </button>
         </div>
 
@@ -127,7 +143,7 @@
         </template>
 
         <!-- 搜索足迹 -->
-        <template v-else>
+        <template v-else-if="tab === 'searches'">
           <p v-if="!mySearches.length" class="empty">
             尚无求索记录 —— <span class="link" @click="go('home')">回到首页</span> 搜一搜功法秘闻
           </p>
@@ -137,6 +153,46 @@
               <span class="hit">{{ s.resultCount ?? 0 }} 条机缘</span>
               <span class="time">{{ fmtTime(s.createTime) }}</span>
               <span class="again link" @click="searchAgain(s.keyword)">再寻一次</span>
+            </li>
+          </ul>
+        </template>
+
+        <!-- 我的任务牌（任务阁联动） -->
+        <template v-else-if="tab === 'quests'">
+          <p v-if="!myQuests.length" class="empty">
+            尚未接取任务 —— <span class="link" @click="go('quest')">前往任务阁</span> 领一枚令牌
+          </p>
+          <ul v-else class="search-list quest-list">
+            <li v-for="q in myQuests" :key="q.id" class="search-row quest-row" :class="{ dim: q.status !== 0 }">
+              <span class="quest-icon">{{ q.icon || '🗡️' }}</span>
+              <span class="kw">{{ q.title }}<small v-if="q.difficulty" class="diff-tag">{{ q.difficulty }}</small><small v-if="q.questType === 'personal'" class="pub-tag">个人 · {{ q.publisher }}</small></span>
+              <span class="status-pill" :class="'q-' + q.status">{{ q.statusText }}</span>
+              <span class="hit">
+                <template v-if="q.status === 1">
+                  <template v-if="q.rewardItem">🎁 {{ q.rewardItem }}</template>
+                  <template v-else>贡献值 +{{ q.rewardContribution }}<template v-if="q.rewardStones"> · 灵石 +{{ q.rewardStones }}</template></template>
+                </template>
+                <template v-else-if="q.status === 0">
+                  <template v-if="q.questItem">可得 {{ q.questItem }}</template>
+                  <template v-else>可得 贡献值 {{ q.questContribution }}<template v-if="q.questStones"> · 灵石 {{ q.questStones }}</template></template>
+                </template>
+              </span>
+              <span class="time">{{ fmtTime(q.status === 1 ? (q.finishTime || q.createTime) : q.createTime) }}</span>
+            </li>
+          </ul>
+        </template>
+
+        <!-- 已习功法（功法阁联动） -->
+        <template v-else>
+          <p v-if="!mySkills.length" class="empty">
+            尚未参悟功法 —— <span class="link" @click="go('skill')">前往功法阁</span> 以贡献值参悟一部
+          </p>
+          <ul v-else class="search-list skill-list">
+            <li v-for="s in mySkills" :key="s.id" class="search-row skill-row">
+              <span class="quest-icon">{{ s.icon || '📜' }}</span>
+              <span class="kw">{{ s.title }}<small v-if="s.grade" class="diff-tag">{{ s.grade }}</small></span>
+              <span class="hit">参悟耗贡献值 {{ s.cost }}</span>
+              <span class="time">{{ fmtTime(s.createTime) }}</span>
             </li>
           </ul>
         </template>
@@ -152,6 +208,8 @@ import { computed, onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import { fetchMyPosts, fetchMySearches, fetchProfile, saveProfile } from '../api/profile'
+import { fetchMyQuests } from '../api/quest'
+import { fetchMySkills } from '../api/skill'
 
 const props = defineProps({
   username: { type: String, default: '' }
@@ -167,7 +225,11 @@ const HALLS = ['主殿', '血煞堂', '幽冥堂', '千机堂', '执法堂', '�
 const error = ref('')
 const profile = ref({})
 const user = ref({})
-const stats = ref({ postCount: 0, likeCount: 0, searchCount: 0 })
+const stats = ref({
+  postCount: 0, likeCount: 0, searchCount: 0,
+  questActive: 0, questDone: 0, contributionTotal: 0, stonesTotal: 0,
+  skillCount: 0, skillSpent: 0, contributionAvailable: 0
+})
 
 const editing = ref(false)
 const saving = ref(false)
@@ -176,6 +238,8 @@ const form = ref({ nickname: '', icon: '', realm: '炼气', hall: '血煞堂', b
 const tab = ref('posts')
 const myPosts = ref([])
 const mySearches = ref([])
+const myQuests = ref([])
+const mySkills = ref([])
 
 /** 入宗天数 */
 const daysInSect = computed(() => {
@@ -201,21 +265,45 @@ async function load() {
   }
 }
 
-/** 两个联动列表一次性预取，保证 tab 上的计数准确 */
+/** 四个联动列表一次性预取，保证 tab 上的计数准确 */
 async function loadTab(key) {
   tab.value = key
+  if (key === 'quests') loadQuests()
+  if (key === 'skills') loadSkills()
 }
 
 async function prefetchLists() {
   try {
-    const [posts, searches] = await Promise.all([
+    const [posts, searches, quests, skills] = await Promise.all([
       fetchMyPosts(props.username),
-      fetchMySearches(props.username)
+      fetchMySearches(props.username),
+      fetchMyQuests(props.username).catch(() => []),
+      fetchMySkills(props.username).catch(() => [])
     ])
     myPosts.value = posts || []
     mySearches.value = searches || []
+    myQuests.value = quests || []
+    mySkills.value = skills || []
   } catch (e) {
     showToast(e.message || '记录加载失败')
+  }
+}
+
+/** 切到「我的任务牌」时刷新，拿到任务阁里的最新进度 */
+async function loadQuests() {
+  try {
+    myQuests.value = (await fetchMyQuests(props.username)) || []
+  } catch (e) {
+    showToast(e.message || '任务牌加载失败')
+  }
+}
+
+/** 切到「已习功法」时刷新，拿到功法阁里的最新参悟 */
+async function loadSkills() {
+  try {
+    mySkills.value = (await fetchMySkills(props.username)) || []
+  } catch (e) {
+    showToast(e.message || '功法记录加载失败')
   }
 }
 
@@ -527,7 +615,7 @@ function realmClass(realm) {
 /* ===== 修行统计 ===== */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
   margin: 0 32px 22px;
 }
@@ -548,6 +636,15 @@ function realmClass(realm) {
   font-family: "STKaiti", "KaiTi", serif;
   color: #f3e8d6;
   text-shadow: 0 0 16px rgba(200, 16, 46, .45);
+}
+
+.stat-sub {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 12px;
+  font-style: normal;
+  color: rgba(226, 196, 110, .85);
+  vertical-align: middle;
 }
 
 .stat span {
@@ -713,6 +810,55 @@ function realmClass(realm) {
   flex-shrink: 0;
 }
 
+/* 任务牌 tab（任务阁联动） */
+.quest-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+
+.quest-row.dim { opacity: .55; }
+
+.diff-tag {
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, .4);
+  color: rgba(226, 196, 110, .85);
+  vertical-align: middle;
+}
+
+.pub-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: #c9b6ff;
+  border: 1px solid rgba(180, 138, 255, .4);
+  vertical-align: middle;
+}
+
+.status-pill {
+  padding: 2px 10px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+
+.status-pill.q-0 {
+  color: #e2c46e;
+  border-color: rgba(226, 196, 110, .5);
+  background: rgba(226, 196, 110, .08);
+}
+
+.status-pill.q-1 {
+  color: #9fd0a8;
+  border-color: rgba(159, 208, 168, .5);
+  background: rgba(159, 208, 168, .08);
+}
+
+.status-pill.q-2 { color: var(--text-dim); }
+
 .again {
   font-size: 12px;
   flex-shrink: 0;
@@ -737,5 +883,6 @@ function realmClass(realm) {
   .form-grid { grid-template-columns: 1fr; }
   .time { display: none; }
   .view { display: none; }
+  .status-pill { display: none; }
 }
 </style>

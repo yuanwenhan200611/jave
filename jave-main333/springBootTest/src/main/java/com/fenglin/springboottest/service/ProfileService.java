@@ -5,10 +5,14 @@ import com.fenglin.springboottest.entity.ForumPost;
 import com.fenglin.springboottest.entity.SearchLog;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.entity.UserProfile;
+import com.fenglin.springboottest.entity.UserQuest;
+import com.fenglin.springboottest.entity.UserSkill;
 import com.fenglin.springboottest.mapper.ForumPostMapper;
 import com.fenglin.springboottest.mapper.SearchLogMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
 import com.fenglin.springboottest.mapper.UserProfileMapper;
+import com.fenglin.springboottest.mapper.UserQuestMapper;
+import com.fenglin.springboottest.mapper.UserSkillMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +48,8 @@ public class ProfileService {
     private final UserProfileMapper userProfileMapper;
     private final ForumPostMapper forumPostMapper;
     private final SearchLogMapper searchLogMapper;
+    private final UserQuestMapper userQuestMapper;
+    private final UserSkillMapper userSkillMapper;
 
     /**
      * 读取个人档案（不存在则自动创建默认档案）+ 跨模块统计。
@@ -81,10 +87,41 @@ public class ProfileService {
         Long searchCount = searchLogMapper.selectCount(
                 new LambdaQueryWrapper<SearchLog>().eq(SearchLog::getUsername, name));
 
+        // 任务阁联动：进行中任务 / 已完成任务 / 累计贡献值与灵石
+        Long questActive = userQuestMapper.selectCount(
+                new LambdaQueryWrapper<UserQuest>().eq(UserQuest::getUsername, name)
+                        .eq(UserQuest::getStatus, 0));
+        Long questDone = userQuestMapper.selectCount(
+                new LambdaQueryWrapper<UserQuest>().eq(UserQuest::getUsername, name)
+                        .eq(UserQuest::getStatus, 1));
+        List<UserQuest> doneQuests = userQuestMapper.selectList(
+                new LambdaQueryWrapper<UserQuest>().eq(UserQuest::getUsername, name)
+                        .eq(UserQuest::getStatus, 1));
+        long contributionTotal = doneQuests.stream()
+                .mapToLong(q -> q.getRewardContribution() == null ? 0L : q.getRewardContribution())
+                .sum();
+        long stonesTotal = doneQuests.stream()
+                .mapToLong(q -> q.getRewardStones() == null ? 0L : q.getRewardStones())
+                .sum();
+
+        // 功法阁联动：已参悟功法 / 参悟消耗贡献值 / 可用贡献值（累计所得 - 参悟所耗）
+        List<UserSkill> mySkills = userSkillMapper.selectList(
+                new LambdaQueryWrapper<UserSkill>().eq(UserSkill::getUsername, name));
+        long skillSpent = mySkills.stream()
+                .mapToLong(s -> s.getCost() == null ? 0L : s.getCost())
+                .sum();
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("postCount", postCount == null ? 0L : postCount);
         stats.put("likeCount", likeCount);
         stats.put("searchCount", searchCount == null ? 0L : searchCount);
+        stats.put("questActive", questActive == null ? 0L : questActive);
+        stats.put("questDone", questDone == null ? 0L : questDone);
+        stats.put("contributionTotal", contributionTotal);
+        stats.put("stonesTotal", stonesTotal);
+        stats.put("skillCount", mySkills.size());
+        stats.put("skillSpent", skillSpent);
+        stats.put("contributionAvailable", contributionTotal - skillSpent);
 
         Map<String, Object> userBrief = new HashMap<>();
         userBrief.put("username", user.getUsername());

@@ -31,6 +31,9 @@ public class ContentItem {
     /** 品阶（如：天阶 / 地阶 / 玄阶 / 黄阶） */
     private String grade;
 
+    /** 参悟所需贡献值（仅功法类条目 > 0，按品阶高深定价） */
+    private Long requiredContribution;
+
     /** 图标（emoji，展示用） */
     private String icon;
 

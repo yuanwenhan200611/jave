@@ -49,7 +49,11 @@
             <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
             <p>{{ item.description }}</p>
           </div>
-          <span class="row-meta">{{ item.categoryName }} · {{ item.viewCount }} 阅</span>
+          <div class="row-meta">
+            <span v-if="isLearned(item.id)" class="row-learned">已参悟</span>
+            <span v-else-if="item.requiredContribution > 0" class="row-cost">贡献 {{ item.requiredContribution }}</span>
+            <span>{{ item.categoryName }} · {{ item.viewCount }} 阅</span>
+          </div>
         </li>
       </ul>
 
@@ -76,6 +80,25 @@
         <p v-if="detailLoading" class="empty">翻阅中……</p>
         <p v-else class="detail-desc">{{ detail.description }}</p>
         <p class="detail-meta">{{ detail.viewCount }} 人参悟</p>
+
+        <!-- ===== 参悟区（贡献值经济：功法须花贡献值方可习得） ===== -->
+        <div v-if="detail && detail.requiredContribution > 0" class="learn-box">
+          <template v-if="isLearned(detail.id)">
+            <span class="learned-tag">✅ 已参悟 · 收录洞府</span>
+          </template>
+          <template v-else>
+            <span class="cost-info">
+              参悟需贡献值 <b>{{ detail.requiredContribution }}</b>
+              <small>（当前可用 {{ skillAvailable }}）</small>
+            </span>
+            <button type="button" class="learn-btn" :disabled="learning" @click="learn">
+              {{ learning ? '参悟中……' : '参悟此功法' }}
+            </button>
+            <p v-if="skillAvailable < detail.requiredContribution" class="cost-warn">
+              贡献值不足 —— <span class="goto-quest" @click="emit('nav', 'quest')">去任务阁交差赚贡献值 →</span>
+            </p>
+          </template>
+        </div>
         <div v-if="related.length" class="detail-related">
           <h3>同源功法</h3>
           <div class="related-chips">
@@ -103,6 +126,7 @@ import {
   fetchRelatedItems,
   searchItems
 } from '../api/home'
+import { fetchSkillStatus, learnSkill } from '../api/skill'
 
 const props = defineProps({
   username: { type: String, default: '道友' }
@@ -137,6 +161,11 @@ const detail = ref(null)
 const related = ref([])
 const detailLoading = ref(false)
 
+// 贡献值经济（功法参悟）：可用余额 + 已参悟功法 id
+const skillAvailable = ref(0)
+const learnedIds = ref([])
+const learning = ref(false)
+
 /** 功法顶级分类 id（含子孙计数） */
 let skillRootId = 0
 
@@ -157,6 +186,7 @@ onMounted(async () => {
   } catch (e) {
     showToast(e.message || '功法阁数据加载失败')
   }
+  loadSkillStatus()
   await load()
 })
 
@@ -220,6 +250,37 @@ async function openDetail(entry) {
 function closeDetail() {
   detail.value = null
   related.value = []
+}
+
+/** 贡献值余额与已参悟列表（失败静默：不影响浏览功法目录） */
+async function loadSkillStatus() {
+  try {
+    const s = await fetchSkillStatus(props.username)
+    skillAvailable.value = s.contributionAvailable ?? 0
+    learnedIds.value = s.learnedIds || []
+  } catch { /* 未登录或后端未就绪时忽略 */ }
+}
+
+function isLearned(id) {
+  return learnedIds.value.includes(id)
+}
+
+/** 参悟功法：扣贡献值，成功后刷新余额并收录洞府 */
+async function learn() {
+  if (!detail.value || learning.value) return
+  learning.value = true
+  try {
+    await learnSkill(props.username, detail.value.id)
+    if (!learnedIds.value.includes(detail.value.id)) {
+      learnedIds.value.push(detail.value.id)
+    }
+    showToast(`参悟成功！「${detail.value.title}」已收录洞府`)
+    await loadSkillStatus()
+  } catch (e) {
+    showToast(e.message || '参悟失败')
+  } finally {
+    learning.value = false
+  }
 }
 </script>
 
@@ -411,6 +472,27 @@ function closeDetail() {
   flex-shrink: 0;
 }
 
+.row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+
+.row-cost {
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: #f7e9c4;
+  background: linear-gradient(135deg, rgba(140, 15, 29, .8), rgba(200, 16, 46, .6));
+  border: 1px solid rgba(212, 175, 55, .4);
+  letter-spacing: 0;
+}
+
+.row-learned {
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: rgba(120, 220, 160, .95);
+  border: 1px solid rgba(120, 220, 160, .4);
+  letter-spacing: 0;
+}
+
 .grade {
   display: inline-block;
   margin-left: 8px;
@@ -530,6 +612,82 @@ function closeDetail() {
   color: var(--text-dim);
   margin: 0;
 }
+
+/* ===== 参悟区（贡献值经济） ===== */
+.learn-box {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(212, 175, 55, .35);
+  border-radius: 12px;
+  background: rgba(12, 8, 18, .6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.cost-info {
+  flex: 1;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--text-soft);
+}
+
+.cost-info b {
+  font-size: 16px;
+  color: #f7e9c4;
+  margin: 0 2px;
+}
+
+.cost-info small {
+  color: var(--text-dim);
+  letter-spacing: 0;
+}
+
+.learn-btn {
+  padding: 8px 20px;
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  color: #f7e9c4;
+  background: linear-gradient(135deg, rgba(140, 15, 29, .85), rgba(200, 16, 46, .65));
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: box-shadow .18s, transform .18s;
+}
+
+.learn-btn:hover:not(:disabled) {
+  box-shadow: 0 0 16px rgba(200, 16, 46, .5);
+  transform: translateY(-1px);
+}
+
+.learn-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.learned-tag {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: rgba(120, 220, 160, .95);
+  border: 1px solid rgba(120, 220, 160, .4);
+  background: rgba(20, 40, 30, .4);
+}
+
+.cost-warn {
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(232, 122, 122, .9);
+}
+
+.goto-quest {
+  color: var(--gold-soft, #e2c46e);
+  cursor: pointer;
+}
+
+.goto-quest:hover { text-decoration: underline; }
 
 .detail-related {
   margin-top: 22px;

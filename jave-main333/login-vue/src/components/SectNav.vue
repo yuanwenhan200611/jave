@@ -44,6 +44,7 @@ const navItems = [
   { key: 'home', label: '首页' },
   { key: 'secret', label: '秘境' },
   { key: 'skill', label: '功法阁' },
+  { key: 'quest', label: '任务阁' },
   { key: 'rank', label: '宗门榜' },
   { key: 'forum', label: '论道' },
   { key: 'profile', label: '洞府' }

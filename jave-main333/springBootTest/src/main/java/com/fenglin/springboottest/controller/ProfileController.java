@@ -5,6 +5,7 @@ import com.fenglin.springboottest.entity.ForumPost;
 import com.fenglin.springboottest.entity.SearchLog;
 import com.fenglin.springboottest.entity.UserProfile;
 import com.fenglin.springboottest.service.ProfileService;
+import com.fenglin.springboottest.service.QuestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,10 +15,11 @@ import java.util.Map;
 /**
  * 洞府（个人页）REST 接口，供 Vue 前端调用：
  *
- *   GET  /api/profile?username=xxx          读取档案 + 跨模块统计（论道/首页/用户）
+ *   GET  /api/profile?username=xxx          读取档案 + 跨模块统计（论道/首页/任务阁/用户）
  *   POST /api/profile/update                保存档案 { username, nickname, icon, realm, hall, bio }
  *   GET  /api/profile/posts?username=xxx    我的帖子（论道联动）
  *   GET  /api/profile/searches?username=xxx 搜索足迹（首页联动）
+ *   GET  /api/profile/quests?username=xxx   我的任务牌（任务阁联动）
  */
 @RestController
 @RequestMapping("/api/profile")
@@ -25,6 +27,7 @@ import java.util.Map;
 public class ProfileController {
 
     private final ProfileService profileService;
+    private final QuestService questService;
 
     /** 读取档案 + 统计 */
     @GetMapping
@@ -70,6 +73,16 @@ public class ProfileController {
     public Result<List<SearchLog>> searches(@RequestParam String username) {
         try {
             return Result.ok(profileService.mySearches(username));
+        } catch (IllegalArgumentException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /** 我的任务牌（任务阁联动） */
+    @GetMapping("/quests")
+    public Result<List<Map<String, Object>>> quests(@RequestParam String username) {
+        try {
+            return Result.ok(questService.myQuests(username));
         } catch (IllegalArgumentException e) {
             return Result.error(e.getMessage());
         }

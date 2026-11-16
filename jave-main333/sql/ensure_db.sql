@@ -200,3 +200,132 @@ FROM (
   UNION ALL SELECT '阿蛮', '论道规则：辱骂道友者罚扫藏经阁三月', '新来的道友看过来：论道讲的是以理服人，骂人一时爽，藏经阁扫地扫断腰。文明论道，从你我做起。', 900, 233
 ) AS t
 WHERE NOT EXISTS (SELECT 1 FROM `forum_post` x WHERE x.title = t.title);
+-- ============================================================
+-- 9. 任务阁模块（幂等建表 + 魔宗风格种子任务）
+--    两大悬赏来源：
+--      · quest_type = 'sect'     宗门颁发，奖励贡献值 / 灵石（可兼得）
+--      · quest_type = 'personal' 个人发布，奖励天才地宝 / 法宝等（reward_item 描述）
+--    接取门槛：min_realm 修为限制（炼气~魔尊）+ max_accept 人数限制
+--    注：本节曾改版（v2 增加类型/奖励/门槛字段），旧库需先 DROP 重建
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `quest` (
+  `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `quest_type`   VARCHAR(10)  NOT NULL DEFAULT 'sect' COMMENT '类型：sect 宗门悬赏 / personal 个人悬赏',
+  `publisher`    VARCHAR(50)  NULL                    COMMENT '发布人（宗门悬赏为 NULL，个人悬赏为用户名）',
+  `title`        VARCHAR(100) NOT NULL                COMMENT '任务名',
+  `description`  VARCHAR(500) NULL                    COMMENT '任务详情',
+  `category`     VARCHAR(20)  NOT NULL                COMMENT '分类：斩妖/夺宝/护送/炼丹/寻物/戒律/其它',
+  `difficulty`   VARCHAR(10)  NOT NULL                COMMENT '难度：简单/普通/困难/地狱',
+  `min_realm`    VARCHAR(10)  NOT NULL DEFAULT '炼气' COMMENT '修为门槛：炼气~魔尊，低于该境界不可接取',
+  `max_accept`   INT          NOT NULL DEFAULT 1      COMMENT '接取名额（完成/进行中占用名额，放弃后释放）',
+  `reward_contribution` BIGINT NOT NULL DEFAULT 0     COMMENT '贡献值奖励（宗门悬赏）',
+  `reward_stones` BIGINT      NOT NULL DEFAULT 0      COMMENT '灵石奖励（宗门悬赏，可与贡献值兼得）',
+  `reward_item`  VARCHAR(100) NULL                    COMMENT '物品奖励（个人悬赏：天才地宝/法宝等）',
+  `icon`         VARCHAR(16)  NULL                    COMMENT '图标（emoji）',
+  `status`       TINYINT      NOT NULL DEFAULT 1      COMMENT '状态：1 上架 / 0 下架',
+  `accept_count` BIGINT       NOT NULL DEFAULT 0      COMMENT '累计接取次数（热度展示）',
+  `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_quest_type` (`quest_type`),
+  KEY `idx_quest_category` (`category`),
+  KEY `idx_quest_status` (`status`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '任务阁·任务牌';
+
+CREATE TABLE IF NOT EXISTS `user_quest` (
+  `id`          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`    VARCHAR(50) NOT NULL                COMMENT '接取人（关联 user.username）',
+  `quest_id`    BIGINT      NOT NULL                COMMENT '任务 id（关联 quest.id）',
+  `status`      TINYINT     NOT NULL DEFAULT 0      COMMENT '状态：0 进行中 / 1 已完成 / 2 已放弃',
+  `reward_contribution` BIGINT NOT NULL DEFAULT 0   COMMENT '完成时所得贡献值快照',
+  `reward_stones` BIGINT    NOT NULL DEFAULT 0      COMMENT '完成时所得灵石快照',
+  `reward_item` VARCHAR(100) NULL                    COMMENT '完成时所得物品快照（个人悬赏）',
+  `create_time` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '接取时间',
+  `finish_time` DATETIME    NULL                    COMMENT '完成 / 放弃时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_uq_user` (`username`),
+  KEY `idx_uq_quest` (`quest_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '任务阁·弟子接取记录';
+
+-- ============ 种子任务：宗门悬赏（奖励贡献值 / 灵石） ============
+INSERT INTO `quest` (`quest_type`, `publisher`, `title`, `description`, `category`, `difficulty`, `min_realm`, `max_accept`, `reward_contribution`, `reward_stones`, `reward_item`, `icon`, `status`, `accept_count`)
+SELECT t.* FROM (
+  SELECT 'sect' AS quest_type, NULL AS publisher, '清剿血狼坡狼群' AS title, '血狼坡狼群近来愈发猖獗，劫掠过往行商。斩狼二十，取狼王左耳为凭。' AS description, '斩妖' AS category, '普通' AS difficulty, '筑基' AS min_realm, 10 AS max_accept, 300 AS reward_contribution, 20 AS reward_stones, NULL AS reward_item, '⚔️' AS icon, 1 AS status, 320 AS accept_count
+  UNION ALL SELECT 'sect', NULL, '夜探万剑坟场斩剑灵', '坟场剑灵夜半出鞘伤人。入得进去，斩得剑灵三尊，归来者皆道中之人。', '斩妖', '困难', '金丹', 5, 800, 60, NULL, '🗡️', 1, 150
+  UNION ALL SELECT 'sect', NULL, '讨伐沉渊魔蛟', '沉渊之底魔蛟苏醒，掀翻渔船七十二。此任务九死一生，性命自负，宗门不收尸。', '斩妖', '地狱', '元婴', 3, 2000, 200, NULL, '🐉', 1, 21
+  UNION ALL SELECT 'sect', NULL, '幽冥鬼市购破境丹', '鬼市子时开市，丹价一日三涨。替宗主购得破境丹两枚，真伪自辨，吃亏自负。', '夺宝', '普通', '筑基', 8, 350, 30, NULL, '⚗️', 1, 260
+  UNION ALL SELECT 'sect', NULL, '万剑坟场拾遗残剑', '剑冢边缘偶有残剑浮土而出。拾得三柄有灵残剑，上缴藏经阁即可。', '夺宝', '简单', '炼气', 20, 150, 10, NULL, '⚒️', 1, 410
+  UNION ALL SELECT 'sect', NULL, '护送丹车队过乱星岭', '炼丹堂三车血参要过乱星岭，岭上散修劫道成风。人货俱全者，赏。', '护送', '普通', '筑基', 6, 400, 25, NULL, '🛡️', 1, 190
+  UNION ALL SELECT 'sect', NULL, '护送新弟子入宗', '山下接引八名记名弟子入宗。要求：人不丢，心不歪，路上不许讲鬼故事。', '护送', '简单', '炼气', 20, 100, 5, NULL, '🧭', 1, 520
+  UNION ALL SELECT 'sect', NULL, '为炼丹堂采百年血参', '断魂崖阴面生百年血参七株，须寅时采摘，日头一出便枯。', '炼丹', '简单', '炼气', 15, 120, 8, NULL, '🌿', 1, 480
+  UNION ALL SELECT 'sect', NULL, '炼制三炉回春丹', '丹房拨药材若干，成丹三炉。炸炉者扣当月例钱，成丹者丹堂记功。', '炼丹', '普通', '筑基', 10, 450, 35, NULL, '🔥', 1, 230
+  UNION ALL SELECT 'sect', NULL, '寻找失落的化神诀残页', '化神诀下半卷失踪百年，线索只有一句：剑鸣最弱时，向东南坡去。', '寻物', '困难', '金丹', 4, 700, 80, NULL, '📜', 1, 88
+  UNION ALL SELECT 'sect', NULL, '寻回走失的噬魂兽', '执法堂豢养的噬魂兽趁夜出逃，会学人哭。找回者赏，被吓哭者不赏。', '寻物', '普通', '筑基', 10, 300, 20, NULL, '🐺', 1, 210
+  UNION ALL SELECT 'sect', NULL, '罚扫藏经阁三月', '自领此任者，须是触犯戒律以功抵过之身。扫帚自备，藏经阁长老验收。', '戒律', '简单', '炼气', 3, 80, 3, NULL, '🧹', 1, 66
+) AS t
+WHERE NOT EXISTS (SELECT 1 FROM `quest` WHERE `quest_type` = 'sect');
+
+-- ============ 种子任务：个人悬赏（奖励天才地宝 / 法宝等） ============
+INSERT INTO `quest` (`quest_type`, `publisher`, `title`, `description`, `category`, `difficulty`, `min_realm`, `max_accept`, `reward_contribution`, `reward_stones`, `reward_item`, `icon`, `status`, `accept_count`)
+SELECT t.* FROM (
+  SELECT 'personal' AS quest_type, '赤炎老祖' AS publisher, '寻九叶凤凰草' AS title, '炼一炉自用丹缺一味主药。九叶凤凰草，叶背带火纹者为真。找到即刻交割，一手草一手宝。' AS description, '炼丹' AS category, '普通' AS difficulty, '筑基' AS min_realm, 2 AS max_accept, 0 AS reward_contribution, 0 AS reward_stones, '百年血参两株' AS reward_item, '🌿' AS icon, 1 AS status, 95 AS accept_count
+  UNION ALL SELECT 'personal', '墨鸦', '取回坠入万蛇窟的佩剑', '执法堂制式魔剑坠崖，剑通灵性，认主不认贼。取得原剑归还者，另有谢礼。', '寻物', '困难', '金丹', 1, 0, 0, '上古剑丸·青蚀', '⚔️', 1, 37
+  UNION ALL SELECT 'personal', '苏九黎', '心魔幻阵陪练', '卡在第七层三个月了，需要一位道友陪我进幻阵走一遍。要求：道心稳固，见故人不至于当场泪崩。', '其它', '普通', '筑基', 3, 0, 0, '千机堂秘制安神香十支', '🌫️', 1, 120
+  UNION ALL SELECT 'personal', '千面魔君', '辨认真伪魔宗古图', '得一残图，真伪难辨。持图去鬼市需一位懂古篆的道友随行鉴定。真图者，谢礼从优。', '寻物', '困难', '金丹', 1, 0, 0, '魔宗秘藏古图（若为真）', '🗺️', 1, 42
+  UNION ALL SELECT 'personal', '玉面罗刹', '血煞堂外哨换防三日', '本堂外哨连值日久，寻三位道友替岗三日。只求尽责，不求勇武。', '护送', '简单', '炼气', 3, 0, 0, '血煞堂护身符一枚', '🛡️', 1, 210
+  UNION ALL SELECT 'personal', '阿蛮', '寻会讲故事的道友', '藏经阁扫地太闷。寻一位会讲志怪故事的道友，每日酉时来扫帚堆边说书半个时辰。', '其它', '简单', '炼气', 1, 0, 0, '阿蛮娘亲手做的酱肘子（管够）', '🍖', 1, 66
+) AS t
+WHERE NOT EXISTS (SELECT 1 FROM `quest` WHERE `quest_type` = 'personal');
+
+SELECT COUNT(*) AS quest_count FROM `quest`;
+
+-- ============================================================
+-- 10. 功法阁·贡献值体系（幂等）
+--    content_item.required_contribution  参悟所需贡献值（按品阶高深定价，仅功法类）
+--    user_skill                          参悟记录（联动洞府：已习功法 / 消耗贡献值）
+--    经济闭环：任务阁交差赚贡献值 → 功法阁参悟花贡献值
+--    可用贡献值 = 累计所得(user_quest) - 已耗于参悟(user_skill)
+-- ============================================================
+
+-- 10.1 content_item 增列（MySQL 8 无 ADD COLUMN IF NOT EXISTS，用条件语句幂等）
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'content_item'
+    AND COLUMN_NAME = 'required_contribution'
+);
+SET @ddl := IF(@col_exists = 0,
+  'ALTER TABLE `content_item` ADD COLUMN `required_contribution` BIGINT NOT NULL DEFAULT 0 COMMENT ''参悟所需贡献值（仅功法类 > 0）'' AFTER `grade`',
+  'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 10.2 参悟记录表
+CREATE TABLE IF NOT EXISTS `user_skill` (
+  `id`          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`    VARCHAR(50) NOT NULL                COMMENT '参悟人（关联 user.username）',
+  `item_id`     BIGINT      NOT NULL                COMMENT '功法条目 id（关联 content_item.id）',
+  `cost`        BIGINT      NOT NULL DEFAULT 0      COMMENT '参悟时消耗的贡献值快照',
+  `title`       VARCHAR(100) NOT NULL               COMMENT '功法名快照',
+  `grade`       VARCHAR(20) NULL                    COMMENT '品阶快照',
+  `icon`        VARCHAR(16) NULL                    COMMENT '图标快照',
+  `create_time` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '参悟时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_us_user` (`username`),
+  KEY `idx_us_item` (`item_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '功法阁·弟子参悟记录';
+
+-- 10.3 按品阶给「功法」子树的条目定价（幂等：仅刷值为 0 的功法条目）
+--      天阶 1500 / 地阶 800 / 玄阶 400 / 黄阶 150 / 其它 100
+UPDATE `content_item` ci
+JOIN `category` c ON c.id = ci.category_id
+LEFT JOIN `category` p ON p.id = c.parent_id
+SET ci.required_contribution = CASE ci.grade
+  WHEN '天阶' THEN 1500
+  WHEN '地阶' THEN 800
+  WHEN '玄阶' THEN 400
+  WHEN '黄阶' THEN 150
+  ELSE 100
+END
+WHERE ci.required_contribution = 0
+  AND (c.name = '功法' OR p.name = '功法');
+
+SELECT COUNT(*) AS priced_skills FROM `content_item` WHERE `required_contribution` > 0;

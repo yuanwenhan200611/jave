@@ -45,6 +45,13 @@
       @logout="handleLogout"
     />
 
+    <QuestPage
+      v-else-if="view === 'quest'"
+      :username="currentUser"
+      @nav="goSect"
+      @logout="handleLogout"
+    />
+
     <RankPage
       v-else-if="view === 'rank'"
       :username="currentUser"
@@ -80,6 +87,7 @@ import RegisterForm from './components/RegisterForm.vue'
 import HomePage from './components/HomePage.vue'
 import SecretPage from './components/SecretPage.vue'
 import SkillPage from './components/SkillPage.vue'
+import QuestPage from './components/QuestPage.vue'
 import RankPage from './components/RankPage.vue'
 import ForumPage from './components/ForumPage.vue'
 import ProfilePage from './components/ProfilePage.vue'
@@ -88,7 +96,7 @@ import { useToast } from './composables/useToast'
 
 const { showToast } = useToast()
 
-// 视图状态机：'login' | 'register' | 'home' | 'secret' | 'skill' | 'rank' | 'forum' | 'profile'
+// 视图状态机：'login' | 'register' | 'home' | 'secret' | 'skill' | 'quest' | 'rank' | 'forum' | 'profile'
 // 未引入 vue-router，宗门各堂沿用 view 状态机切换
 const view = ref('login')
 const lastUsername = ref('')
@@ -96,8 +104,8 @@ const currentUser = ref('')
 // 洞府「再寻一次」联动：跳回首页并自动搜索的关键词
 const searchSeed = ref('')
 
-/** 登录后的六个宗门页面共用全宽面板样式 */
-const SECT_VIEWS = ['home', 'secret', 'skill', 'rank', 'forum', 'profile']
+/** 登录后的宗门页面共用全宽面板样式 */
+const SECT_VIEWS = ['home', 'secret', 'skill', 'quest', 'rank', 'forum', 'profile']
 const isSectView = computed(() => SECT_VIEWS.includes(view.value))
 
 // 打开永远是登录页；登录成功后才进入首页（不读取旧 token 自动续登）

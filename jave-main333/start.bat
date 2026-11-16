@@ -24,7 +24,13 @@ net start MySQL57 >nul 2>&1
 REM ---- 确保 login_db 与 user 表存在（环境重置后库会被清空，这里自动重建；幂等，不破坏已有账号）----
 set "MYSQL_BIN=C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 if not exist "%MYSQL_BIN%" set "MYSQL_BIN=mysql.exe"
-"%MYSQL_BIN%" -uroot -p123456 < "%ROOT%sql\ensure_db.sql" >nul 2>&1
+REM 关键：必须加 --default-character-set=utf8mb4，否则 Windows 下 mysql 客户端默认 GBK 连接，
+REM 中文种子数据会报 Incorrect string value，脚本中断导致功法/宗门榜/论道全部为空
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 --force < "%ROOT%sql\ensure_db.sql" >nul 2>&1
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 --force < "%ROOT%sql\home_db.sql" >nul 2>&1
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 --force < "%ROOT%sql\user_profile.sql" >nul 2>&1
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 --force < "%ROOT%sql\seed_content.sql" >nul 2>&1
+"%MYSQL_BIN%" -uroot -p123456 --default-character-set=utf8mb4 --force < "%ROOT%sql\seed_sect.sql" >nul 2>&1
 
 echo [3/5] 前端：安装依赖并启动 Vite(5173) ...
 start "login-vue" cmd /k "pushd "%FE%" && npm ci --prefer-offline --no-audit --no-fund --progress=false && npm run dev"

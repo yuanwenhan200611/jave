@@ -28,6 +28,9 @@ public class ContentItemVO {
 
     private String grade;
 
+    /** 参悟所需贡献值（仅功法类 > 0，按品阶定价） */
+    private Long requiredContribution;
+
     private String icon;
 
     private Long viewCount;
