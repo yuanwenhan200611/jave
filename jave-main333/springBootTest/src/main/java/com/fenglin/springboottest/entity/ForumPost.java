@@ -34,6 +34,9 @@ public class ForumPost {
     /** 道心相印（点赞）数 */
     private Long likes;
 
+    /** 被驳次数（血辩台驳道） */
+    private Long counters;
+
     /** 状态：1 显示 / 0 屏蔽 */
     private Integer status;
 

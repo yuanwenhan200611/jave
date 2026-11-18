@@ -329,3 +329,85 @@ WHERE ci.required_contribution = 0
   AND (c.name = '功法' OR p.name = '功法');
 
 SELECT COUNT(*) AS priced_skills FROM `content_item` WHERE `required_contribution` > 0;
+
+-- ============================================================
+-- 11. 魔功殿·修为体系（幂等）
+--     user_profile.cultivation  修为值（魔功殿修炼累计，跨过门槛自动晋升境界）
+--     cultivation_log           修炼记录（每次吞吐魔气的流水，兼作冷却判定）
+--     经济闭环：任务阁赚灵石/贡献 → 魔功殿花灵石/贡献换修为
+--     五法门：mogu 魔窟苦修 / xuedan 吞噬血丹 / xueji 血祭秘法 /
+--             duoshe 夺舍夺元 / tuntian 吞天魔功
+-- ============================================================
+
+-- 11.1 user_profile 增列（MySQL 8 无 ADD COLUMN IF NOT EXISTS，用条件语句幂等）
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_profile'
+    AND COLUMN_NAME = 'cultivation'
+);
+SET @ddl := IF(@col_exists = 0,
+  'ALTER TABLE `user_profile` ADD COLUMN `cultivation` BIGINT NOT NULL DEFAULT 0 COMMENT ''修为值（魔功殿修炼累计）'' AFTER `realm`',
+  'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 11.2 修炼记录表
+CREATE TABLE IF NOT EXISTS `cultivation_log` (
+  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`    VARCHAR(50)  NOT NULL                COMMENT '修炼人（关联 user.username）',
+  `method_key`  VARCHAR(20)  NOT NULL                COMMENT '法门标识：mogu/xuedan/xueji/duoshe/tuntian',
+  `method_name` VARCHAR(30)  NOT NULL                COMMENT '法门名快照',
+  `outcome`     VARCHAR(10)  NOT NULL                COMMENT '结果：great 大成 / good 小成 / backlash 反噬',
+  `delta`       BIGINT       NOT NULL DEFAULT 0      COMMENT '本次修为增减（负数为反噬）',
+  `cost_stones`       BIGINT NOT NULL DEFAULT 0      COMMENT '消耗灵石',
+  `cost_contribution` BIGINT NOT NULL DEFAULT 0      COMMENT '消耗贡献值',
+  `story`       VARCHAR(500) NULL                    COMMENT '修炼异象文案',
+  `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修炼时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_cl_user` (`username`),
+  KEY `idx_cl_method` (`username`, `method_key`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '魔功殿·修炼记录';
+
+SELECT COUNT(*) AS cultivation_log_ready FROM `cultivation_log`;
+
+-- ============================================================
+-- 12. 血辩台（原论道魔宗化）：论道即修炼
+--     forum_post 加被驳计数；forum_like 动作防重；forum_income 帖主分成账本
+-- ============================================================
+
+-- 12.1 forum_post 增列
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'forum_post'
+    AND COLUMN_NAME = 'counters'
+);
+SET @ddl := IF(@col_exists = 0,
+  'ALTER TABLE `forum_post` ADD COLUMN `counters` BIGINT NOT NULL DEFAULT 0 COMMENT ''被驳次数（血辩台驳道）'' AFTER `likes`',
+  'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 12.2 动作记录表（香火供奉 / 驳道，UNIQUE 防一人重复）
+CREATE TABLE IF NOT EXISTS `forum_like` (
+  `id`          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `post_id`     BIGINT      NOT NULL                COMMENT '帖子 id（forum_post.id）',
+  `username`    VARCHAR(50) NOT NULL                COMMENT '动作发起人',
+  `action`      VARCHAR(16) NOT NULL                COMMENT '动作：incense 香火供奉 / counter 驳道',
+  `create_time` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '动作时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_fl_post_user_action` (`post_id`, `username`, `action`),
+  KEY `idx_fl_user` (`username`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '血辩台·动作记录';
+
+-- 12.3 帖主分成账本（香火供奉 → 帖主 +贡献值）
+CREATE TABLE IF NOT EXISTS `forum_income` (
+  `id`          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`    VARCHAR(50) NOT NULL                COMMENT '收益人',
+  `stones`      BIGINT      NOT NULL DEFAULT 0      COMMENT '灵石收益',
+  `contribution` BIGINT     NOT NULL DEFAULT 0      COMMENT '贡献值收益',
+  `source`      VARCHAR(20) NOT NULL                COMMENT '来源：incense 香火分成',
+  `create_time` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '入账时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_fi_user` (`username`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '血辩台·帖主分成账本';
+
+SELECT COUNT(*) AS forum_like_ready FROM `forum_like`;
+SELECT COUNT(*) AS forum_income_ready FROM `forum_income`;

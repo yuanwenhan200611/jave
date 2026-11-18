@@ -38,8 +38,19 @@ jave-main/
   - 功法阁 `SkillPage.vue`：复用 /api/home/search 按功法分类检索，分堂 tab = 功法的二级分类；
   - 秘境 `SecretPage.vue`：「随机探秘」走 GET /api/sect/explore（随机秘境 + 奇遇文案，浏览量+1）；
   - 宗门榜 `RankPage.vue`：GET /api/sect/rank + /api/sect/halls（sect_member 表，战力降序，前 3 名特殊高亮）；
-  - 论道 `ForumPage.vue`：GET/POST /api/forum/posts + POST /api/forum/posts/{id}/like（forum_post 表，支持最新/热议排序）。
+  - 血辩台 `ForumPage.vue`（原论道，2026-11-18 魔宗化改造）：GET /api/forum/posts（username 可选，返回 incensedIds/counteredIds）
+    + POST /api/forum/posts（开坛讲道：20 灵石设坛，修为 +60~150，60s 调息）
+    + POST /api/forum/posts/{id}/incense（香火供奉：10 灵石，自己 +15~40 修为，帖主 +5 贡献分成）
+    + POST /api/forum/posts/{id}/counter（驳道：押 50 修为，45% 胜 +120~300 / 败 -50）。
+    论道即修炼：消耗/修为统一走 CultivationService.settle 落 cultivation_log（兼作调息判定）；
+    帖主分成落 forum_income（魔功殿/洞府余额口径均已计入）；动作防重靠 forum_like 表 UNIQUE(post_id,username,action)。
   → 对应建表与种子在 sql/seed_sect.sql（ensure_db.sql 已并入，start.bat 自愈无忧）。新 Mapper 必须加 @Mapper 注解，否则启动报 bean not found。
+- **魔功殿·增修为（2026-11-18 已上线）** `CultivationPage.vue`：五种魔宗法门修炼增修为（魔窟苦修/吞噬血丹/血祭秘法/夺舍夺元/吞天魔功，
+  各有冷却与反噬概率），接口 GET /api/cultivation/info + POST /api/cultivation/practice（CultivationService/CultivationController）。
+  修为存 `user_profile.cultivation`（ensure_db.sql 第 11 节幂等加列），跨门槛自动晋升境界（只升不降）；
+  流水存 `cultivation_log`（兼作冷却判定）。
+  经济闭环：任务阁赚灵石/贡献 → 魔功殿花灵石/贡献换修为；洞府 contributionAvailable 已扣魔功殿消耗。
+  法门概率/收益/冷却全部硬编码在 CultivationService 的 METHODS/rollOutcome/rollDelta，要调数值只改这一个文件。
 - **后端强依赖 MySQL**：`jdbc:mysql://localhost:3306/login_db`，用户 `root`，密码 `123456`。
   → **本机已安装 MySQL 8 且开机自启**（客户端在 `C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe`）。
   `login_db` 与 `user` 表通过 `sql/login_db.sql` 建好（完整版，含 DROP，手动重建用）。

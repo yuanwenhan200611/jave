@@ -32,6 +32,9 @@ public class UserProfile {
     /** 境界：炼气/筑基/金丹/元婴/化神/炼虚/合体/大乘/渡劫/魔尊 */
     private String realm;
 
+    /** 修为值（魔功殿修炼累计，跨过门槛自动晋升境界） */
+    private Long cultivation;
+
     /** 所属堂口（主殿、血煞堂、幽冥堂、千机堂、执法堂、炼丹堂） */
     private String hall;
 

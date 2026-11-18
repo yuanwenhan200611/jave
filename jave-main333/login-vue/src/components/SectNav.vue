@@ -44,9 +44,10 @@ const navItems = [
   { key: 'home', label: '首页' },
   { key: 'secret', label: '秘境' },
   { key: 'skill', label: '功法阁' },
+  { key: 'cultivation', label: '魔功殿' },
   { key: 'quest', label: '任务阁' },
   { key: 'rank', label: '宗门榜' },
-  { key: 'forum', label: '论道' },
+  { key: 'forum', label: '血辩台' },
   { key: 'profile', label: '洞府' }
 ]
 
@@ -181,7 +182,7 @@ function go(key) {
 @media (max-width: 780px) {
   .navbar { flex-wrap: wrap; gap: 12px; padding: 12px 18px; }
   .nav-links { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
-  /* 六个导航项在窄屏需保持单行（横向滚动），否则文字会被挤成竖排 */
+  /* 八个导航项在窄屏需保持单行（横向滚动），否则文字会被挤成竖排 */
   .nav-links li { white-space: nowrap; padding: 6px 12px; font-size: 13px; letter-spacing: 1px; }
   .nav-user { margin-left: auto; }
   .uname { display: none; }

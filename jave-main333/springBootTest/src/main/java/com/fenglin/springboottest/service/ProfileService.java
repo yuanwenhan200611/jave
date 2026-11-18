@@ -1,12 +1,17 @@
 package com.fenglin.springboottest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.fenglin.springboottest.entity.CultivationLog;
+import com.fenglin.springboottest.entity.ForumIncome;
 import com.fenglin.springboottest.entity.ForumPost;
 import com.fenglin.springboottest.entity.SearchLog;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.entity.UserProfile;
 import com.fenglin.springboottest.entity.UserQuest;
 import com.fenglin.springboottest.entity.UserSkill;
+import com.fenglin.springboottest.mapper.CultivationLogMapper;
+import com.fenglin.springboottest.mapper.ForumIncomeMapper;
 import com.fenglin.springboottest.mapper.ForumPostMapper;
 import com.fenglin.springboottest.mapper.SearchLogMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
@@ -47,9 +52,11 @@ public class ProfileService {
     private final UserMapper userMapper;
     private final UserProfileMapper userProfileMapper;
     private final ForumPostMapper forumPostMapper;
+    private final ForumIncomeMapper forumIncomeMapper;
     private final SearchLogMapper searchLogMapper;
     private final UserQuestMapper userQuestMapper;
     private final UserSkillMapper userSkillMapper;
+    private final CultivationLogMapper cultivationLogMapper;
 
     /**
      * 读取个人档案（不存在则自动创建默认档案）+ 跨模块统计。
@@ -104,11 +111,28 @@ public class ProfileService {
                 .mapToLong(q -> q.getRewardStones() == null ? 0L : q.getRewardStones())
                 .sum();
 
-        // 功法阁联动：已参悟功法 / 参悟消耗贡献值 / 可用贡献值（累计所得 - 参悟所耗）
+        // 血辩台联动：香火分成（帖主收益）计入累计所得
+        contributionTotal += forumIncomeSum(name, "contribution");
+        stonesTotal += forumIncomeSum(name, "stones");
+
+        // 功法阁联动：已参悟功法 / 参悟消耗贡献值 / 可用贡献值（累计所得 - 参悟所耗 - 魔功殿血祭所耗）
         List<UserSkill> mySkills = userSkillMapper.selectList(
                 new LambdaQueryWrapper<UserSkill>().eq(UserSkill::getUsername, name));
         long skillSpent = mySkills.stream()
                 .mapToLong(s -> s.getCost() == null ? 0L : s.getCost())
+                .sum();
+
+        // 魔功殿联动：修炼次数 / 修炼所得修为 / 修炼消耗的灵石与贡献值
+        List<CultivationLog> cultivationLogs = cultivationLogMapper.selectList(
+                new LambdaQueryWrapper<CultivationLog>().eq(CultivationLog::getUsername, name));
+        long cultivationGain = cultivationLogs.stream()
+                .mapToLong(l -> l.getDelta() == null ? 0L : Math.max(0, l.getDelta()))
+                .sum();
+        long cultStonesSpent = cultivationLogs.stream()
+                .mapToLong(l -> l.getCostStones() == null ? 0L : l.getCostStones())
+                .sum();
+        long cultContributionSpent = cultivationLogs.stream()
+                .mapToLong(l -> l.getCostContribution() == null ? 0L : l.getCostContribution())
                 .sum();
 
         Map<String, Object> stats = new HashMap<>();
@@ -121,7 +145,12 @@ public class ProfileService {
         stats.put("stonesTotal", stonesTotal);
         stats.put("skillCount", mySkills.size());
         stats.put("skillSpent", skillSpent);
-        stats.put("contributionAvailable", contributionTotal - skillSpent);
+        stats.put("cultivationPractice", cultivationLogs.size());
+        stats.put("cultivationGain", cultivationGain);
+        stats.put("cultivation", profile.getCultivation() == null ? 0L : profile.getCultivation());
+        stats.put("stonesSpent", cultStonesSpent);
+        stats.put("stonesAvailable", stonesTotal - cultStonesSpent);
+        stats.put("contributionAvailable", contributionTotal - skillSpent - cultContributionSpent);
 
         Map<String, Object> userBrief = new HashMap<>();
         userBrief.put("username", user.getUsername());
@@ -206,8 +235,20 @@ public class ProfileService {
         return list == null ? new ArrayList<>() : list;
     }
 
-    /** 首次进入洞府：生成一份默认档案 */
-    private UserProfile createDefaultProfile(String username) {
+    /** 血辩台收益合计（forum_income 表，column 限 stones/contribution） */
+    private long forumIncomeSum(String username, String column) {
+        Map<String, Object> row = forumIncomeMapper.selectMaps(
+                new QueryWrapper<ForumIncome>()
+                        .select("IFNULL(SUM(" + column + "), 0) AS total")
+                        .eq("username", username))
+                .stream().findFirst().orElse(null);
+        if (row == null || row.get("total") == null) {
+            return 0L;
+        }
+        return Long.parseLong(String.valueOf(row.get("total")));
+    }
+
+    /** 首次进入洞府：生成一份默认档案 */    private UserProfile createDefaultProfile(String username) {
         UserProfile profile = new UserProfile();
         profile.setUsername(username);
         profile.setNickname(username);
@@ -216,6 +257,7 @@ public class ProfileService {
         profile.setRealm("炼气");
         profile.setHall("血煞堂");
         profile.setBio("初入魔宗，道心未定。");
+        profile.setCultivation(0L);
         userProfileMapper.insert(profile);
         return userProfileMapper.selectById(profile.getId());
     }

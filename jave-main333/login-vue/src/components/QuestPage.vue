@@ -206,6 +206,7 @@ import {
   fetchQuestList,
   fetchQuestSummary,
   fetchQuestTypes,
+  finishQuest,
   publishQuest
 } from '../api/quest'
 

@@ -75,8 +75,8 @@
       <section class="stats-row">
         <div class="stat">
           <b>{{ stats.postCount }}</b>
-          <span>论道之帖</span>
-          <small @click="go('forum')" class="stat-link">去论道 →</small>
+          <span>血辩之帖</span>
+          <small @click="go('forum')" class="stat-link">去血辩台 →</small>
         </div>
         <div class="stat">
           <b>{{ stats.likeCount }}</b>
@@ -96,7 +96,17 @@
         <div class="stat">
           <b>{{ stats.contributionAvailable ?? 0 }}<i class="stat-sub">累计 {{ stats.contributionTotal || 0 }} · 参悟耗 {{ stats.skillSpent || 0 }}</i></b>
           <span>可用贡献值</span>
-          <small class="stat-dim">交差所得，未参悟者留存</small>
+          <small class="stat-dim">交差所得，扣除参悟与血祭</small>
+        </div>
+        <div class="stat">
+          <b>{{ stats.cultivation || 0 }}<i class="stat-sub">修炼 {{ stats.cultivationPractice || 0 }} 次</i></b>
+          <span>修为（{{ profile.realm || '炼气' }}）</span>
+          <small class="stat-link" @click="go('cultivation')">去魔功殿 →</small>
+        </div>
+        <div class="stat">
+          <b>{{ stats.stonesAvailable ?? 0 }}<i class="stat-sub">累计 {{ stats.stonesTotal || 0 }} · 修炼耗 {{ stats.stonesSpent || 0 }}</i></b>
+          <span>可用灵石</span>
+          <small class="stat-dim">血丹与魔功的口粮</small>
         </div>
         <div class="stat">
           <b>{{ stats.skillCount || 0 }}</b>
@@ -109,7 +119,7 @@
       <section class="tabs-wrap">
         <div class="tabs">
           <button type="button" class="tab" :class="{ active: tab === 'posts' }" @click="loadTab('posts')">
-            📜 我的论道帖 <small class="tab-count">{{ myPosts.length }}</small>
+            📜 我的血辩帖 <small class="tab-count">{{ myPosts.length }}</small>
           </button>
           <button type="button" class="tab" :class="{ active: tab === 'searches' }" @click="loadTab('searches')">
             🔍 求索足迹 <small class="tab-count">{{ mySearches.length }}</small>
@@ -125,7 +135,7 @@
         <!-- 我的帖子 -->
         <template v-if="tab === 'posts'">
           <p v-if="!myPosts.length" class="empty">
-            尚无论道之帖 —— <span class="link" @click="go('forum')">前往论道</span> 留下第一篇吧
+            尚无开坛之帖 —— <span class="link" @click="go('forum')">前往血辩台</span> 开第一坛吧
           </p>
           <ul v-else class="post-list">
             <li v-for="p in myPosts" :key="p.id" class="post-row">
@@ -228,7 +238,8 @@ const user = ref({})
 const stats = ref({
   postCount: 0, likeCount: 0, searchCount: 0,
   questActive: 0, questDone: 0, contributionTotal: 0, stonesTotal: 0,
-  skillCount: 0, skillSpent: 0, contributionAvailable: 0
+  skillCount: 0, skillSpent: 0, contributionAvailable: 0,
+  cultivation: 0, cultivationPractice: 0, stonesSpent: 0, stonesAvailable: 0
 })
 
 const editing = ref(false)

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS `user_profile` (
   `nickname`    VARCHAR(20)  NOT NULL                COMMENT '道号（展示昵称）',
   `icon`        VARCHAR(8)   DEFAULT NULL            COMMENT '头像 emoji（后端默认 🧑‍🦲）',
   `realm`       VARCHAR(10)  DEFAULT '炼气'           COMMENT '境界：炼气~魔尊',
+  `cultivation` BIGINT       NOT NULL DEFAULT 0       COMMENT '修为值（魔功殿修炼累计，跨过门槛自动晋升境界）',
   `hall`        VARCHAR(10)  DEFAULT '血煞堂'         COMMENT '所属堂口',
   `bio`         VARCHAR(100) DEFAULT ''              COMMENT '道语签名',
   `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
