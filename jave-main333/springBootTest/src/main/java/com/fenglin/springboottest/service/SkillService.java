@@ -2,10 +2,14 @@ package com.fenglin.springboottest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fenglin.springboottest.entity.ContentItem;
+import com.fenglin.springboottest.entity.ForumIncome;
 import com.fenglin.springboottest.entity.UserQuest;
+import com.fenglin.springboottest.entity.UserSecret;
 import com.fenglin.springboottest.entity.UserSkill;
 import com.fenglin.springboottest.mapper.ContentItemMapper;
+import com.fenglin.springboottest.mapper.ForumIncomeMapper;
 import com.fenglin.springboottest.mapper.UserQuestMapper;
+import com.fenglin.springboottest.mapper.UserSecretMapper;
 import com.fenglin.springboottest.mapper.UserSkillMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,6 +43,8 @@ public class SkillService {
     private final ContentItemMapper contentItemMapper;
     private final UserQuestMapper userQuestMapper;
     private final UserSkillMapper userSkillMapper;
+    private final UserSecretMapper userSecretMapper;
+    private final ForumIncomeMapper forumIncomeMapper;
 
     /**
      * 参悟状态总览：{ contributionTotal, skillSpent, contributionAvailable,
@@ -113,7 +119,7 @@ public class SkillService {
         return list == null ? new ArrayList<>() : list;
     }
 
-    /** 贡献值账本：{ contributionTotal, skillSpent, contributionAvailable } */
+    /** 贡献值账本：{ contributionTotal, skillSpent, secretSpent, contributionAvailable } */
     public Map<String, Object> contributionBook(String name) {
         List<UserQuest> doneQuests = userQuestMapper.selectList(
                 new LambdaQueryWrapper<UserQuest>().eq(UserQuest::getUsername, name)
@@ -122,17 +128,46 @@ public class SkillService {
                 .mapToLong(q -> q.getRewardContribution() == null ? 0L : q.getRewardContribution())
                 .sum();
 
+        // 血辩台香火分成 + 秘境探索奖励入账（forum_income，source 含 incense/secret）
+        contributionTotal += forumIncomeSum(name, "contribution");
+
         List<UserSkill> skills = userSkillMapper.selectList(
                 new LambdaQueryWrapper<UserSkill>().eq(UserSkill::getUsername, name));
         long skillSpent = skills.stream()
                 .mapToLong(s -> s.getCost() == null ? 0L : s.getCost())
                 .sum();
 
+        // 秘境破界同样从同一本贡献值账上扣（功法 + 秘境共用可用额度）；表未建时容错为 0
+        long secretSpent;
+        try {
+            List<UserSecret> secrets = userSecretMapper.selectList(
+                    new LambdaQueryWrapper<UserSecret>().eq(UserSecret::getUsername, name));
+            secretSpent = secrets.stream()
+                    .mapToLong(s -> s.getCost() == null ? 0L : s.getCost())
+                    .sum();
+        } catch (Exception e) {
+            secretSpent = 0L;
+        }
+
         Map<String, Object> book = new HashMap<>();
         book.put("contributionTotal", contributionTotal);
         book.put("skillSpent", skillSpent);
-        book.put("contributionAvailable", contributionTotal - skillSpent);
+        book.put("secretSpent", secretSpent);
+        book.put("contributionAvailable", contributionTotal - skillSpent - secretSpent);
         return book;
+    }
+
+    /** forum_income 某列合计（秘境奖励 / 香火分成入账） */
+    private long forumIncomeSum(String name, String column) {
+        Map<String, Object> row = forumIncomeMapper.selectMaps(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<ForumIncome>()
+                        .select("IFNULL(SUM(" + column + "), 0) AS total")
+                        .eq("username", name))
+                .stream().findFirst().orElse(null);
+        if (row == null || row.get("total") == null) {
+            return 0L;
+        }
+        return Long.parseLong(String.valueOf(row.get("total")));
     }
 
     private long availableContribution(String name) {

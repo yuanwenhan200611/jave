@@ -2,21 +2,43 @@
   <div class="page">
     <SectNav active="secret" :username="username" @nav="k => emit('nav', k)" @logout="emit('logout')" />
 
-    <!-- 秘境名 -->
+    <!-- 秘境名 + 血功池 -->
     <header class="hero">
-      <span class="hero-seal">秘</span>
-      <div>
-        <h1>秘境</h1>
-        <p class="hero-desc">{{ rootDesc }}</p>
+      <div class="hero-side" aria-hidden="true">
+        <span class="hero-rune">机</span><span class="hero-rune">缘</span><span class="hero-rune">造</span><span class="hero-rune">化</span>
+      </div>
+      <div class="hero-core">
+        <span class="hero-seal">秘</span>
+        <div class="hero-text">
+          <h1>秘 境</h1>
+          <p class="hero-desc">{{ rootDesc }}</p>
+        </div>
+        <div class="treasury" title="当前可用贡献值">
+          <span class="treasury-label">血功池</span>
+          <span class="treasury-num">{{ secretAvailable }}</span>
+          <span class="treasury-unit">贡献值</span>
+        </div>
+      </div>
+      <div class="hero-side right" aria-hidden="true">
+        <span class="hero-rune">生</span><span class="hero-rune">死</span><span class="hero-rune">由</span><span class="hero-rune">天</span>
       </div>
     </header>
 
-    <!-- 探索入口 -->
+    <!-- 探索入口（天机引路需贡献值） -->
     <section class="explore">
-      <p class="explore-hint">吉凶自负，生死由天</p>
-      <button class="explore-btn" type="button" :disabled="exploring" @click="onExplore">
-        {{ exploring ? '探 索 中……' : '随 机 探 秘' }}
+      <div class="explore-fee" :class="{ poor: secretAvailable < ROAM_FEE }">
+        <span class="fee-label">天机引路费</span>
+        <span class="fee-num">{{ ROAM_FEE }}</span>
+        <span class="fee-unit">贡献值 / 次</span>
+        <small class="fee-balance">血功池 {{ secretAvailable }}</small>
+      </div>
+      <button class="explore-btn" type="button" :disabled="exploring || secretAvailable < ROAM_FEE" @click="onExplore">
+        {{ exploring ? '推 演 天 机 中……' : '耗 贡 献 · 随 机 探 秘' }}
       </button>
+      <p v-if="secretAvailable < ROAM_FEE" class="explore-warn">
+        贡献值不足，天机不启 —— <span class="goto-quest" @click="emit('nav', 'quest')">去任务阁交差赚贡献值 →</span>
+      </p>
+      <p v-else class="explore-hint">吉凶自负，生死由天</p>
     </section>
 
     <!-- 探索奇遇弹层 -->
@@ -27,12 +49,29 @@
         <div class="explore-head">
           <span class="explore-icon">{{ found.icon || '🗺️' }}</span>
           <div>
-            <h2>{{ found.title }}<small v-if="found.grade" class="grade">{{ found.grade }}</small></h2>
+            <h2>{{ found.title }}<small v-if="found.grade" class="grade-badge">{{ found.grade }}</small></h2>
             <p class="detail-crumb">{{ found.categoryName }} · 已有 {{ found.viewCount }} 道友探过</p>
           </div>
         </div>
+        <p class="explore-fee-done" v-if="found.fee !== undefined">
+          {{ found.fee > 0 ? `此行破费 ${found.fee} 贡献值（天机引路费）` : '此秘境你已开辟过，免费重游' }}
+        </p>
         <p class="explore-text">{{ found.encounter }}</p>
         <p class="detail-desc">{{ found.description }}</p>
+        <div v-if="found.rewards && found.rewards.length" class="reward-list">
+          <p class="reward-title">—— 此行收获 ——</p>
+          <div
+            v-for="(rw, i) in found.rewards"
+            :key="i"
+            class="reward-item"
+            :class="'r-' + rw.rarity"
+          >
+            <span class="reward-icon">{{ rw.icon }}</span>
+            <span class="reward-name">{{ rw.name }}</span>
+            <span v-if="rw.amount > 0" class="reward-amount">+{{ rw.amount }}</span>
+            <span class="reward-rarity">{{ rarityText(rw.rarity) }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -55,20 +94,49 @@
       <p v-if="error" class="empty">{{ error }}</p>
       <p v-else-if="!loading && !list.length" class="empty">此境尚未收录洞天</p>
 
-      <ul v-else class="list">
-        <li v-for="item in list" :key="item.id" class="row" @click="openDetail(item)">
-          <span class="row-icon">{{ item.icon || '🗺️' }}</span>
-          <div class="row-main">
-            <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
-            <p>{{ item.description }}</p>
+      <!-- 破界名录：一条条秘境长卷 -->
+      <ul v-else class="scroll-list">
+        <li
+          v-for="item in list"
+          :key="item.id"
+          class="scroll-row"
+          :class="gradeClass(item.grade)"
+          @click="openDetail(item)"
+        >
+          <div class="spine" aria-hidden="true"></div>
+          <span class="row-rune">{{ item.icon || '🗺️' }}</span>
+          <div class="row-body">
+            <div class="row-title-line">
+              <h3 class="row-title">{{ item.title }}</h3>
+              <span v-if="item.grade" class="grade-badge">{{ item.grade }}</span>
+              <span v-if="isEntered(item.id)" class="entered-badge">已开辟</span>
+            </div>
+            <p class="row-desc">{{ item.description }}</p>
+            <div class="row-tags">
+              <span class="tag">{{ item.categoryName }}</span>
+              <span class="tag">{{ item.viewCount }} 道友探过</span>
+            </div>
           </div>
-          <span class="row-meta">{{ item.categoryName }} · {{ item.viewCount }} 阅</span>
+          <div class="cost-plaque" :class="{ free: !(item.requiredContribution > 0) }">
+            <template v-if="isEntered(item.id)">
+              <span class="cost-done">✦ 已开辟 · 免费重游</span>
+            </template>
+            <template v-else-if="item.requiredContribution > 0">
+              <span class="cost-num">{{ item.requiredContribution }}</span>
+              <span class="cost-unit">门票 · 贡献值</span>
+            </template>
+            <template v-else>
+              <span class="cost-free">无主之境</span>
+              <span class="cost-free-sub">随意进出</span>
+            </template>
+          </div>
+          <span class="row-arrow" aria-hidden="true">▸</span>
         </li>
       </ul>
 
       <div v-if="pages > 1" class="pager">
         <button type="button" class="pager-btn" :disabled="page <= 1" @click="gotoPage(page - 1)">上一页</button>
-        <span class="pager-info">第 {{ page }} / {{ pages }} 页</span>
+        <span class="pager-info">第 {{ page }} / {{ pages }} 页 · 共 {{ total }} 境</span>
         <button type="button" class="pager-btn" :disabled="page >= pages" @click="gotoPage(page + 1)">下一页</button>
       </div>
     </section>
@@ -82,13 +150,57 @@
         <div class="explore-head">
           <span class="explore-icon">{{ detail.icon || '🗺️' }}</span>
           <div>
-            <h2>{{ detail.title }}<small v-if="detail.grade" class="grade">{{ detail.grade }}</small></h2>
+            <h2>{{ detail.title }}<small v-if="detail.grade" class="grade-badge">{{ detail.grade }}</small></h2>
             <p class="detail-crumb">{{ detail.categoryPath }}</p>
           </div>
         </div>
         <p v-if="detailLoading" class="empty">探查中……</p>
         <p v-else class="detail-desc">{{ detail.description }}</p>
         <p class="detail-meta">{{ detail.viewCount }} 人阅过</p>
+
+        <!-- ===== 破界区（贡献值经济：玄阶以上收门票，低端为无主之境） ===== -->
+        <div v-if="detail" class="enter-box" :class="{ free: !(detail.requiredContribution > 0) }">
+          <template v-if="isEntered(detail.id)">
+            <span class="entered-tag">✅ 已开辟 · 免费重游</span>
+          </template>
+          <template v-else-if="detail.requiredContribution > 0">
+            <div class="cost-hero">
+              <span class="cost-hero-label">破界门票</span>
+              <span class="cost-hero-num">{{ detail.requiredContribution }}</span>
+              <span class="cost-hero-unit">贡献值</span>
+              <span class="cost-hero-balance">血功池 {{ secretAvailable }}</span>
+            </div>
+            <button type="button" class="enter-btn" :disabled="entering" @click="enter">
+              {{ entering ? '破界中……' : '破界进入此秘境' }}
+            </button>
+            <p v-if="secretAvailable < detail.requiredContribution" class="cost-warn">
+              贡献值不足 —— <span class="goto-quest" @click="emit('nav', 'quest')">去任务阁交差赚贡献值 →</span>
+            </p>
+          </template>
+          <template v-else>
+            <div class="free-note">
+              <span class="free-tag">无主之境 · 随意进出</span>
+              <small>无人看守，收获寒酸，胜在分文不取</small>
+            </div>
+            <button type="button" class="enter-btn" :disabled="entering" @click="enter">
+              {{ entering ? '进入中……' : '随意进入此境' }}
+            </button>
+          </template>
+          <div v-if="enterRewards.length" class="reward-list">
+            <p class="reward-title">—— 此行收获 ——</p>
+            <div
+              v-for="(rw, i) in enterRewards"
+              :key="i"
+              class="reward-item"
+              :class="'r-' + rw.rarity"
+            >
+              <span class="reward-icon">{{ rw.icon }}</span>
+              <span class="reward-name">{{ rw.name }}</span>
+              <span v-if="rw.amount > 0" class="reward-amount">+{{ rw.amount }}</span>
+              <span class="reward-rarity">{{ rarityText(rw.rarity) }}</span>
+            </div>
+          </div>
+        </div>
         <div v-if="related.length" class="detail-related">
           <h3>相邻秘境</h3>
           <div class="related-chips">
@@ -110,8 +222,8 @@
 import { onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
-import { fetchHomeSummary, fetchItemDetail, searchItems } from '../api/home'
-import { fetchExplore } from '../api/sect'
+import { fetchHomeSummary, fetchItemDetail, fetchRelatedItems, searchItems } from '../api/home'
+import { fetchSecretStatus, enterSecret, roamSecret } from '../api/secret'
 
 const props = defineProps({
   username: { type: String, default: '道友' }
@@ -120,6 +232,9 @@ const props = defineProps({
 const emit = defineEmits(['nav', 'logout'])
 
 const { showToast } = useToast()
+
+/** 随机探秘的「天机引路费」，与后端 SecretService.ROAM_FEE 对齐 */
+const ROAM_FEE = 20
 
 const rootDesc = ref('无尽秘境，待你开辟')
 const tabs = ref([{ id: 0, name: '全部秘境', icon: '🗺️' }])
@@ -132,6 +247,7 @@ const list = ref([])
 const page = ref(1)
 const pageSize = 10
 const pages = ref(0)
+const total = ref(0)
 
 // 探索
 const exploring = ref(false)
@@ -142,7 +258,28 @@ const detail = ref(null)
 const related = ref([])
 const detailLoading = ref(false)
 
+// 贡献值经济（秘境破界）：可用余额 + 已开辟秘境 id
+const secretAvailable = ref(0)
+const enteredIds = ref([])
+const entering = ref(false)
+// 最近一次破界 / 探索的奖励（展示用）
+const enterRewards = ref([])
+
+function rarityText(rarity) {
+  return { common: '普通', rare: '稀有', epic: '史诗', legendary: '传说' }[rarity] || '普通'
+}
+
 let secretRootId = 0
+
+/** 品阶 → 血书脊色（天/圣/神品猩红，地/王品紫煞，玄品幽蓝，黄/凡品暗金） */
+function gradeClass(grade) {
+  const g = String(grade || '')
+  if (/[天圣神魔]/.test(g)) return 'g-heaven'
+  if (/[地王皇]/.test(g)) return 'g-earth'
+  if (/玄/.test(g)) return 'g-mystic'
+  if (/[黄凡]/.test(g)) return 'g-common'
+  return ''
+}
 
 onMounted(async () => {
   try {
@@ -161,6 +298,7 @@ onMounted(async () => {
   } catch (e) {
     showToast(e.message || '秘境数据加载失败')
   }
+  loadSecretStatus()
   await load()
 })
 
@@ -176,6 +314,7 @@ async function load(toPage = 1) {
       size: pageSize
     })
     list.value = data.list || []
+    total.value = data.total || 0
     pages.value = data.pages || 0
     page.value = data.page || toPage
   } catch (e) {
@@ -196,11 +335,26 @@ function gotoPage(p) {
   load(p)
 }
 
-/** 随机探秘：后端随机挑一个秘境并生成奇遇文案 */
+/** 贡献值余额与已开辟秘境（失败静默：不影响浏览秘境名录） */
+async function loadSecretStatus() {
+  try {
+    const s = await fetchSecretStatus(props.username)
+    secretAvailable.value = s.contributionAvailable ?? 0
+    enteredIds.value = s.enteredIds || []
+  } catch { /* 未登录或后端未就绪时忽略 */ }
+}
+
+function isEntered(id) {
+  return enteredIds.value.includes(id)
+}
+
+/** 随机探秘：收「天机引路费」，随机挑秘境并生成奇遇文案 */
 async function onExplore() {
+  if (exploring.value) return
   exploring.value = true
   try {
-    found.value = await fetchExplore()
+    found.value = await roamSecret(props.username)
+    await loadSecretStatus()
   } catch (e) {
     showToast(e.message || '探索失败，天机紊乱')
   } finally {
@@ -212,9 +366,14 @@ async function openDetail(entry) {
   detailLoading.value = true
   detail.value = { ...entry }
   related.value = []
+  enterRewards.value = []
   try {
-    const d = await fetchItemDetail(entry.id)
+    const [d, rel] = await Promise.all([
+      fetchItemDetail(entry.id),
+      fetchRelatedItems(entry.id, 4).catch(() => [])
+    ])
     detail.value = d
+    related.value = rel || []
   } catch (e) {
     showToast(e.message || '详情加载失败')
   } finally {
@@ -226,6 +385,31 @@ function closeDetail() {
   detail.value = null
   related.value = []
 }
+
+/** 破界进入秘境：扣门票贡献值，首入掷探索奖励 */
+async function enter() {
+  if (!detail.value || entering.value) return
+  entering.value = true
+  try {
+    const res = await enterSecret(props.username, detail.value.id)
+    const rewards = (res && res.rewards) || []
+    if (!enteredIds.value.includes(detail.value.id)) {
+      enteredIds.value.push(detail.value.id)
+    }
+    enterRewards.value = rewards
+    const highlights = rewards
+      .filter(rw => rw.rarity === 'epic' || rw.rarity === 'legendary')
+      .map(rw => rw.name)
+    showToast(highlights.length
+      ? `破界成功！「${detail.value.title}」已开辟，竟得 ${highlights.join('、')}！`
+      : `破界成功！「${detail.value.title}」已开辟，可随时重游`)
+    await loadSecretStatus()
+  } catch (e) {
+    showToast(e.message || '破界失败')
+  } finally {
+    entering.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -234,8 +418,7 @@ function closeDetail() {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
-  /* 半透明面板：全屏背景透出，内容靠自身卡片底色保证可读 */
-  background: rgba(8, 5, 12, .20);
+  background: rgba(8, 5, 12, .22);
   border: 1px solid rgba(196, 154, 92, .18);
   border-radius: 22px;
   overflow: hidden;
@@ -245,40 +428,59 @@ function closeDetail() {
     0 0 50px rgba(200, 16, 46, .12);
 }
 
-/* ===== 秘境名 ===== */
+/* ===== 秘境名 + 血功池 ===== */
 .hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 30px 26px 20px;
+  border-bottom: 1px solid rgba(196, 154, 92, .16);
+  background:
+    radial-gradient(60% 120% at 50% -30%, rgba(200, 16, 46, .22), transparent 70%),
+    rgba(10, 6, 14, .5);
+}
+
+.hero-core {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 34px 32px 22px;
+  min-width: 0;
 }
 
 .hero-seal {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
   color: #f7e9c4;
-  background: linear-gradient(145deg, #8c0f1d, #c8102e);
+  background: linear-gradient(145deg, #6b0a16, #c8102e 70%, #8c0f1d);
   border: 2px solid var(--gold);
-  box-shadow: 0 4px 18px rgba(200, 16, 46, .5), inset 0 0 10px rgba(0, 0, 0, .35);
+  box-shadow: 0 0 22px rgba(200, 16, 46, .55), inset 0 0 12px rgba(0, 0, 0, .45);
   transform: rotate(-6deg);
   flex-shrink: 0;
+  animation: seal-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes seal-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(200, 16, 46, .45), inset 0 0 12px rgba(0, 0, 0, .45); }
+  50% { box-shadow: 0 0 34px rgba(200, 16, 46, .75), inset 0 0 12px rgba(0, 0, 0, .45); }
 }
 
 .hero h1 {
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
   color: #f3e8d6;
-  text-shadow: 0 2px 18px rgba(200, 16, 46, .45);
+  text-shadow: 0 0 22px rgba(200, 16, 46, .6), 0 2px 4px rgba(0, 0, 0, .6);
   margin: 0;
+  white-space: nowrap;
 }
 
 .hero-desc {
@@ -288,19 +490,132 @@ function closeDetail() {
   margin: 6px 0 0;
 }
 
+/* 血功池：贡献值余额，大字高亮 */
+.treasury {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid rgba(212, 175, 55, .5);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(140, 15, 29, .55), rgba(60, 8, 16, .8)),
+    rgba(12, 8, 18, .8);
+  box-shadow: 0 0 18px rgba(200, 16, 46, .35), inset 0 0 14px rgba(0, 0, 0, .4);
+  flex-shrink: 0;
+}
+
+.treasury-label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: rgba(247, 233, 196, .85);
+}
+
+.treasury-num {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffe9a8;
+  text-shadow: 0 0 14px rgba(212, 175, 55, .75);
+  font-variant-numeric: tabular-nums;
+}
+
+.treasury-unit {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .85);
+}
+
+/* 两侧符文柱 */
+.hero-side {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.hero-rune {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: rgba(200, 16, 46, .75);
+  border: 1px solid rgba(200, 16, 46, .3);
+  border-radius: 4px;
+  background: rgba(30, 6, 12, .45);
+}
+
 /* ===== 探索入口 ===== */
 .explore {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 6px 32px 26px;
+  padding: 18px 32px 26px;
+  border-bottom: 1px solid rgba(196, 154, 92, .14);
+  background: rgba(10, 6, 14, .35);
 }
+
+/* 天机引路费价牌 */
+.explore-fee {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 22px;
+  border: 1px solid rgba(212, 175, 55, .5);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(140, 15, 29, .45), rgba(45, 8, 14, .8)),
+    rgba(12, 8, 18, .8);
+  box-shadow: 0 0 16px rgba(200, 16, 46, .3), inset 0 0 12px rgba(0, 0, 0, .35);
+}
+
+.fee-label {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(247, 233, 196, .85);
+}
+
+.fee-num {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffe9a8;
+  text-shadow: 0 0 16px rgba(212, 175, 55, .8);
+  font-variant-numeric: tabular-nums;
+}
+
+.fee-unit {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .85);
+}
+
+.fee-balance {
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .85);
+  border: 1px solid rgba(196, 154, 92, .35);
+  background: rgba(12, 8, 18, .55);
+}
+
+.explore-fee.poor { border-color: rgba(232, 122, 122, .55); }
+.explore-fee.poor .fee-num { color: #ff9aa6; }
 
 .explore-hint {
   font-size: 12px;
   letter-spacing: 4px;
   color: rgba(226, 58, 78, .75);
+}
+
+.explore-warn {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(232, 122, 122, .9);
 }
 
 .explore-btn {
@@ -323,32 +638,39 @@ function closeDetail() {
 
 .explore-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.12); }
 .explore-btn:active:not(:disabled) { transform: translateY(0); }
-.explore-btn:disabled { opacity: .7; cursor: wait; transform: none; }
+.explore-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+.goto-quest {
+  color: var(--gold-soft, #e2c46e);
+  cursor: pointer;
+}
+
+.goto-quest:hover { text-decoration: underline; }
 
 /* ===== 分堂 tab ===== */
-.tabs-wrap { padding: 0 32px 24px; }
+.tabs-wrap { padding: 0 26px 26px; }
 
 .tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 14px;
+  margin: 16px 0 14px;
 }
 
 .tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
+  padding: 8px 16px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px 14px 6px 14px;
   background: rgba(12, 8, 18, .72);
   color: var(--text-soft);
   font-family: inherit;
   font-size: 14px;
   letter-spacing: 2px;
   cursor: pointer;
-  transition: color .18s, border-color .18s, background .18s;
+  transition: color .18s, border-color .18s, background .18s, box-shadow .18s;
 }
 
 .tab:hover { color: var(--gold-soft); border-color: var(--gold); }
@@ -356,82 +678,214 @@ function closeDetail() {
 .tab.active {
   color: #f7e9c4;
   border-color: var(--gold);
-  background: linear-gradient(135deg, rgba(140, 15, 29, .7), rgba(200, 16, 46, .5));
-  box-shadow: 0 0 14px rgba(200, 16, 46, .3);
+  background: linear-gradient(135deg, rgba(140, 15, 29, .75), rgba(200, 16, 46, .5));
+  box-shadow: 0 0 14px rgba(200, 16, 46, .35);
 }
 
 .tab-icon { font-size: 15px; }
 .tab-count { font-size: 11px; color: var(--text-dim); letter-spacing: 0; }
 
-/* ===== 列表 ===== */
+/* ===== 破界名录：一条条秘境长卷 ===== */
 .empty {
   text-align: center;
   font-size: 13px;
   color: var(--text-soft);
   letter-spacing: 1px;
-  padding: 22px 0;
+  padding: 26px 0;
 }
 
-.list {
+.scroll-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.row {
+.scroll-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 16px;
-  background: rgba(10, 7, 15, .78);
+  padding: 14px 18px 14px 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(24, 10, 20, .85), rgba(12, 8, 18, .92) 40%, rgba(12, 8, 18, .92)),
+    rgba(10, 7, 15, .9);
   cursor: pointer;
-  transition: background .15s;
+  overflow: hidden;
+  transition: border-color .18s, box-shadow .18s, transform .18s;
 }
 
-.row + .row { border-top: 1px solid var(--border); }
-.row:hover { background: rgba(28, 18, 36, .65); }
+/* 左侧血书脊：按品阶变色 */
+.spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, .55), rgba(196, 154, 92, .25));
+}
 
-.row-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.scroll-row.g-heaven .spine { background: linear-gradient(180deg, #ff2e4c, #8c0f1d); }
+.scroll-row.g-earth .spine { background: linear-gradient(180deg, #b06cff, #4a1a7a); }
+.scroll-row.g-mystic .spine { background: linear-gradient(180deg, #4aa8ff, #173a7a); }
+.scroll-row.g-common .spine { background: linear-gradient(180deg, #d4af37, #6b5a20); }
 
-.row-main { flex: 1; min-width: 0; }
+/* 悬停：血气泛起 */
+.scroll-row:hover {
+  border-color: rgba(200, 16, 46, .55);
+  box-shadow: 0 0 20px rgba(200, 16, 46, .25), 0 8px 24px rgba(0, 0, 0, .4);
+  transform: translateX(4px);
+}
 
-.row-main h3 {
-  font-size: 15px;
-  color: #f3e8d6;
+.scroll-row:hover .row-title { color: #ffe9c9; }
+
+.row-rune {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  border: 1px solid rgba(212, 175, 55, .35);
+  border-radius: 10px;
+  background: rgba(30, 12, 20, .6);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, .5);
+}
+
+.row-body { flex: 1; min-width: 0; }
+
+.row-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.row-title {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 16px;
   letter-spacing: 1px;
-  margin: 0 0 3px;
+  color: #f3e8d6;
+  margin: 0;
+  transition: color .18s;
 }
 
-.row-main p {
+.grade-badge {
+  display: inline-block;
+  padding: 1px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: #f7e9c4;
+  background: linear-gradient(135deg, rgba(140, 15, 29, .85), rgba(200, 16, 46, .6));
+  border: 1px solid rgba(212, 175, 55, .45);
+  vertical-align: middle;
+  letter-spacing: 1px;
+}
+
+.entered-badge {
+  display: inline-block;
+  padding: 1px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: rgba(120, 220, 160, .95);
+  border: 1px solid rgba(120, 220, 160, .4);
+  background: rgba(20, 40, 30, .35);
+  letter-spacing: 1px;
+}
+
+.row-desc {
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-soft);
-  margin: 0;
+  margin: 0 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.row-meta {
-  font-size: 12px;
-  color: rgba(212, 175, 55, .6);
-  letter-spacing: 1px;
-  flex-shrink: 0;
-}
+.row-tags { display: flex; gap: 6px; }
 
-.grade {
-  display: inline-block;
-  margin-left: 8px;
+.tag {
   padding: 1px 8px;
   font-size: 11px;
-  border-radius: 999px;
-  color: #f7e9c4;
-  background: linear-gradient(135deg, rgba(140, 15, 29, .8), rgba(200, 16, 46, .6));
-  border: 1px solid rgba(212, 175, 55, .4);
-  vertical-align: middle;
+  letter-spacing: 1px;
+  border-radius: 4px;
+  color: rgba(212, 175, 55, .7);
+  border: 1px solid rgba(196, 154, 92, .25);
+  background: rgba(12, 8, 18, .5);
+}
+
+/* ===== 门票价牌：整行最醒目的元素 ===== */
+.cost-plaque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 96px;
+  padding: 8px 14px;
+  flex-shrink: 0;
+  border: 1px solid rgba(212, 175, 55, .55);
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(140, 15, 29, .5), rgba(45, 8, 14, .85));
+  box-shadow: 0 0 14px rgba(200, 16, 46, .3), inset 0 0 12px rgba(0, 0, 0, .35);
+}
+
+.cost-num {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #ffe9a8;
+  text-shadow: 0 0 16px rgba(212, 175, 55, .8);
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-unit {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(247, 233, 196, .8);
+}
+
+.cost-plaque.free {
+  border-color: rgba(120, 220, 160, .4);
+  background: linear-gradient(160deg, rgba(20, 45, 32, .6), rgba(12, 20, 16, .85));
+  box-shadow: none;
+}
+
+.cost-free {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: rgba(120, 220, 160, .95);
+}
+
+.cost-free-sub {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(120, 220, 160, .6);
+}
+
+.cost-done {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(120, 220, 160, .95);
+  text-align: center;
+}
+
+.row-arrow {
+  font-size: 16px;
+  color: rgba(212, 175, 55, .5);
+  flex-shrink: 0;
+  transition: color .18s, transform .18s;
+}
+
+.scroll-row:hover .row-arrow {
+  color: var(--gold-soft);
+  transform: translateX(3px);
 }
 
 /* ===== 分页 ===== */
@@ -440,7 +894,7 @@ function closeDetail() {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
 .pager-btn {
@@ -520,6 +974,14 @@ function closeDetail() {
   margin: 0 0 16px;
 }
 
+.explore-fee-done {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .8);
+}
+
 .explore-head {
   display: flex;
   align-items: flex-start;
@@ -569,6 +1031,195 @@ function closeDetail() {
   margin: 0;
 }
 
+/* ===== 破界区：门票大价牌 ===== */
+.enter-box {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid rgba(212, 175, 55, .4);
+  border-radius: 12px;
+  background:
+    radial-gradient(90% 120% at 50% 0%, rgba(200, 16, 46, .16), transparent 70%),
+    rgba(12, 8, 18, .7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.cost-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cost-hero-label {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--text-soft);
+}
+
+.cost-hero-num {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffe9a8;
+  text-shadow: 0 0 20px rgba(212, 175, 55, .8), 0 0 40px rgba(200, 16, 46, .4);
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-hero-unit {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(247, 233, 196, .85);
+}
+
+.cost-hero-balance {
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .85);
+  border: 1px solid rgba(196, 154, 92, .35);
+  background: rgba(12, 8, 18, .55);
+}
+
+.enter-btn {
+  padding: 9px 26px;
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  color: #f7e9c4;
+  background: linear-gradient(135deg, rgba(140, 15, 29, .9), rgba(200, 16, 46, .7));
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: box-shadow .18s, transform .18s;
+}
+
+.enter-btn:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(200, 16, 46, .55);
+  transform: translateY(-1px);
+}
+
+.enter-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.entered-tag {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: rgba(120, 220, 160, .95);
+  border: 1px solid rgba(120, 220, 160, .4);
+  background: rgba(20, 40, 30, .4);
+}
+
+.cost-warn {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(232, 122, 122, .9);
+}
+
+/* 无主之境（低端免费秘境）入口 */
+.enter-box.free { border-color: rgba(120, 220, 160, .35); }
+
+.free-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.free-tag {
+  padding: 3px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(120, 220, 160, .95);
+  border: 1px solid rgba(120, 220, 160, .4);
+  background: rgba(20, 40, 30, .35);
+}
+
+.free-note small {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+/* ===== 探索收获（奖励列表） ===== */
+.reward-list {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(196, 154, 92, .3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reward-title {
+  margin: 0 0 2px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: rgba(212, 175, 55, .6);
+}
+
+.reward-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(196, 154, 92, .25);
+  background: rgba(12, 8, 18, .6);
+  font-size: 13px;
+}
+
+.reward-icon { font-size: 16px; flex-shrink: 0; }
+
+.reward-name {
+  flex: 1;
+  min-width: 0;
+  color: #f3e8d6;
+  letter-spacing: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reward-amount {
+  font-weight: 700;
+  color: #ffe9a8;
+  font-variant-numeric: tabular-nums;
+}
+
+.reward-rarity {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  font-size: 10px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+}
+
+/* 稀有度配色 */
+.r-common { border-color: rgba(196, 154, 92, .25); }
+.r-common .reward-rarity { color: rgba(154, 143, 176, .9); border: 1px solid rgba(154, 143, 176, .35); }
+
+.r-rare { border-color: rgba(74, 168, 255, .45); }
+.r-rare .reward-rarity { color: #7db8ff; border: 1px solid rgba(74, 168, 255, .5); }
+
+.r-epic { border-color: rgba(176, 108, 255, .5); background: rgba(50, 20, 70, .35); }
+.r-epic .reward-rarity { color: #cf9aff; border: 1px solid rgba(176, 108, 255, .55); }
+
+.r-legendary {
+  border-color: rgba(255, 176, 55, .6);
+  background: linear-gradient(135deg, rgba(120, 60, 8, .4), rgba(60, 30, 6, .5));
+  box-shadow: 0 0 12px rgba(255, 176, 55, .25);
+}
+.r-legendary .reward-rarity { color: #ffc46e; border: 1px solid rgba(255, 176, 55, .6); }
+
 .detail-related {
   margin-top: 22px;
   padding-top: 16px;
@@ -601,7 +1252,7 @@ function closeDetail() {
 
 /* ===== 页脚 / 响应式 ===== */
 .page-foot {
-  padding: 16px 32px 20px;
+  padding: 16px 26px 20px;
   text-align: center;
   font-size: 12px;
   letter-spacing: 1px;
@@ -610,10 +1261,17 @@ function closeDetail() {
 }
 
 @media (max-width: 780px) {
-  .hero { padding: 26px 18px 18px; }
-  .hero h1 { font-size: 21px; letter-spacing: 2px; }
-  .tabs-wrap { padding: 0 18px 20px; }
-  .row-meta { display: none; }
+  .hero { padding: 24px 16px 16px; flex-wrap: wrap; }
+  .hero-side { display: none; }
+  .hero h1 { font-size: 22px; letter-spacing: 3px; }
+  .hero-core { width: 100%; justify-content: flex-start; }
+  .tabs-wrap { padding: 0 16px 20px; }
+  .explore { padding: 16px 16px 20px; }
   .explore-btn { width: 100%; padding: 13px 0; }
+  .explore-fee { flex-wrap: wrap; justify-content: center; }
+  .cost-plaque { min-width: 76px; padding: 6px 10px; }
+  .cost-num { font-size: 19px; }
+  .row-desc { white-space: normal; }
+  .row-arrow { display: none; }
 }
 </style>

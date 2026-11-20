@@ -71,37 +71,12 @@
         </div>
       </section>
 
-      <!-- ===== 修行统计（跨模块联动） ===== -->
+      <!-- ===== 修行统计（核心五项，明细见下方各页签） ===== -->
       <section class="stats-row">
         <div class="stat">
-          <b>{{ stats.postCount }}</b>
-          <span>血辩之帖</span>
-          <small @click="go('forum')" class="stat-link">去血辩台 →</small>
-        </div>
-        <div class="stat">
-          <b>{{ stats.likeCount }}</b>
-          <span>道心相印</span>
-          <small class="stat-link" @click="loadTab('posts')">看我的帖 →</small>
-        </div>
-        <div class="stat">
-          <b>{{ stats.searchCount }}</b>
-          <span>求索次数</span>
-          <small @click="go('home')" class="stat-link">去求索 →</small>
-        </div>
-        <div class="stat">
-          <b>{{ stats.questDone || 0 }}<i v-if="stats.questActive" class="stat-sub">+{{ stats.questActive }} 进行中</i></b>
-          <span>任务阁功勋</span>
-          <small class="stat-link" @click="go('quest')">去接令 →</small>
-        </div>
-        <div class="stat">
-          <b>{{ stats.contributionAvailable ?? 0 }}<i class="stat-sub">累计 {{ stats.contributionTotal || 0 }} · 参悟耗 {{ stats.skillSpent || 0 }}</i></b>
+          <b>{{ stats.contributionAvailable ?? 0 }}<i class="stat-sub">累计 {{ stats.contributionTotal || 0 }} · 参悟 {{ stats.skillSpent || 0 }} · 破界 {{ stats.secretSpent || 0 }}</i></b>
           <span>可用贡献值</span>
-          <small class="stat-dim">交差所得，扣除参悟与血祭</small>
-        </div>
-        <div class="stat">
-          <b>{{ stats.cultivation || 0 }}<i class="stat-sub">修炼 {{ stats.cultivationPractice || 0 }} 次</i></b>
-          <span>修为（{{ profile.realm || '炼气' }}）</span>
-          <small class="stat-link" @click="go('cultivation')">去魔功殿 →</small>
+          <small class="stat-dim">交差所得，扣除参悟、破界与血祭</small>
         </div>
         <div class="stat">
           <b>{{ stats.stonesAvailable ?? 0 }}<i class="stat-sub">累计 {{ stats.stonesTotal || 0 }} · 修炼耗 {{ stats.stonesSpent || 0 }}</i></b>
@@ -109,9 +84,19 @@
           <small class="stat-dim">血丹与魔功的口粮</small>
         </div>
         <div class="stat">
-          <b>{{ stats.skillCount || 0 }}</b>
-          <span>已习功法</span>
-          <small class="stat-link" @click="go('skill')">去功法阁 →</small>
+          <b>{{ stats.cultivation || 0 }}<i class="stat-sub">修炼 {{ stats.cultivationPractice || 0 }} 次</i></b>
+          <span>修为（{{ profile.realm || '炼气' }}）</span>
+          <small class="stat-link" @click="go('cultivation')">去魔功殿 →</small>
+        </div>
+        <div class="stat">
+          <b>{{ stats.questDone || 0 }}<i v-if="stats.questActive" class="stat-sub">+{{ stats.questActive }} 进行中</i></b>
+          <span>任务阁功勋</span>
+          <small class="stat-link" @click="go('quest')">去接令 →</small>
+        </div>
+        <div class="stat">
+          <b>{{ stats.postCount || 0 }}<i v-if="stats.likeCount" class="stat-sub">♡ {{ stats.likeCount }}</i></b>
+          <span>血辩之帖</span>
+          <small class="stat-link" @click="loadTab('posts')">看我的帖 →</small>
         </div>
       </section>
 
@@ -129,6 +114,12 @@
           </button>
           <button type="button" class="tab" :class="{ active: tab === 'skills' }" @click="loadTab('skills')">
             📖 已习功法 <small class="tab-count">{{ mySkills.length }}</small>
+          </button>
+          <button type="button" class="tab" :class="{ active: tab === 'secrets' }" @click="loadTab('secrets')">
+            🗝️ 已辟秘境 <small class="tab-count">{{ mySecrets.length }}</small>
+          </button>
+          <button type="button" class="tab" :class="{ active: tab === 'storage' }" @click="loadTab('storage')">
+            🧰 储物空间 <small class="tab-count">{{ myStorage.length }}</small>
           </button>
         </div>
 
@@ -192,6 +183,52 @@
           </ul>
         </template>
 
+        <!-- 已辟秘境（秘境联动） -->
+        <template v-else-if="tab === 'secrets'">
+          <p v-if="!mySecrets.length" class="empty">
+            尚未破界 —— <span class="link" @click="go('secret')">前往秘境</span> 开辟第一境
+          </p>
+          <ul v-else class="search-list skill-list">
+            <li v-for="s in mySecrets" :key="s.id" class="search-row skill-row">
+              <span class="quest-icon">{{ s.icon || '🗺️' }}</span>
+              <span class="kw">{{ s.title }}<small v-if="s.grade" class="diff-tag">{{ s.grade }}</small></span>
+              <span class="hit">{{ s.cost > 0 ? `破界耗贡献值 ${s.cost}` : '无主之境 · 随意进出' }}</span>
+              <span class="time">{{ fmtTime(s.createTime) }}</span>
+            </li>
+          </ul>
+          <div v-if="mySecretRewards.length" class="reward-history">
+            <h3>🗝️ 奇遇手札 · 近期收获</h3>
+            <ul class="search-list">
+              <li v-for="r in mySecretRewards" :key="r.id" class="search-row reward-row" :class="'r-' + r.rarity">
+                <span class="kw">{{ r.rewardName }}<small class="diff-tag">{{ rarityText(r.rarity) }}</small></span>
+                <span class="hit" v-if="r.amount > 0">+{{ r.amount }}</span>
+                <span class="time">{{ fmtTime(r.createTime) }}</span>
+              </li>
+            </ul>
+          </div>
+        </template>
+
+        <!-- 储物空间（秘境探索所得，法宝永久收录） -->
+        <template v-else-if="tab === 'storage'">
+          <p v-if="!myStorage.length" class="empty">
+            储物袋空空如也 —— <span class="link" @click="go('secret')">前往秘境</span> 探宝，法宝自会入袋
+          </p>
+          <div v-else class="storage-grid">
+            <div v-for="t in myStorage" :key="t.id" class="treasure-card" :class="'r-' + t.rarity" :title="t.detail">
+              <span class="treasure-icon">{{ t.icon }}</span>
+              <div class="treasure-main">
+                <h3>{{ t.name }}</h3>
+                <p class="treasure-meta">
+                  <small class="type-tag">{{ t.typeLabel }}</small>
+                  <small class="rarity-tag">{{ rarityText(t.rarity) }}</small>
+                </p>
+                <p class="treasure-detail">{{ t.detail }}</p>
+              </div>
+              <span class="treasure-time">{{ fmtTime(t.createTime) }}</span>
+            </div>
+          </div>
+        </template>
+
         <!-- 已习功法（功法阁联动） -->
         <template v-else>
           <p v-if="!mySkills.length" class="empty">
@@ -214,12 +251,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import { fetchMyPosts, fetchMySearches, fetchProfile, saveProfile } from '../api/profile'
 import { fetchMyQuests } from '../api/quest'
 import { fetchMySkills } from '../api/skill'
+import { fetchMySecrets, fetchSecretStatus, fetchSecretStorage } from '../api/secret'
 
 const props = defineProps({
   username: { type: String, default: '' }
@@ -236,9 +274,9 @@ const error = ref('')
 const profile = ref({})
 const user = ref({})
 const stats = ref({
-  postCount: 0, likeCount: 0, searchCount: 0,
+  postCount: 0, likeCount: 0,
   questActive: 0, questDone: 0, contributionTotal: 0, stonesTotal: 0,
-  skillCount: 0, skillSpent: 0, contributionAvailable: 0,
+  skillSpent: 0, secretSpent: 0, contributionAvailable: 0,
   cultivation: 0, cultivationPractice: 0, stonesSpent: 0, stonesAvailable: 0
 })
 
@@ -251,13 +289,14 @@ const myPosts = ref([])
 const mySearches = ref([])
 const myQuests = ref([])
 const mySkills = ref([])
+const mySecrets = ref([])
+const mySecretRewards = ref([])
+const myStorage = ref([])
 
-/** 入宗天数 */
-const daysInSect = computed(() => {
-  if (!user.value.createdAt) return '—'
-  const days = Math.floor((Date.now() - new Date(user.value.createdAt).getTime()) / 86400000)
-  return days < 1 ? '今' : String(days)
-})
+/** 稀有度文案（与秘境页一致） */
+function rarityText(rarity) {
+  return { common: '普通', rare: '稀有', epic: '史诗', legendary: '传说' }[rarity] || '普通'
+}
 
 onMounted(load)
 
@@ -276,11 +315,13 @@ async function load() {
   }
 }
 
-/** 四个联动列表一次性预取，保证 tab 上的计数准确 */
+/** 联动列表一次性预取，保证 tab 上的计数准确 */
 async function loadTab(key) {
   tab.value = key
   if (key === 'quests') loadQuests()
   if (key === 'skills') loadSkills()
+  if (key === 'secrets') loadSecrets()
+  if (key === 'storage') loadStorage()
 }
 
 async function prefetchLists() {
@@ -295,9 +336,28 @@ async function prefetchLists() {
     mySearches.value = searches || []
     myQuests.value = quests || []
     mySkills.value = skills || []
+    // 秘境联动（失败静默：后端未就绪不影响其它 tab）
+    loadSecrets()
+    loadStorage()
   } catch (e) {
     showToast(e.message || '记录加载失败')
   }
+}
+
+/** 已辟秘境 + 奇遇手札（秘境页联动） */
+async function loadSecrets() {
+  try {
+    mySecrets.value = (await fetchMySecrets(props.username)) || []
+    const status = await fetchSecretStatus(props.username).catch(() => null)
+    mySecretRewards.value = (status && status.recentRewards) || []
+  } catch { /* 静默 */ }
+}
+
+/** 储物空间（秘境探索所得法宝 / 残篇 / 神通，永久收录） */
+async function loadStorage() {
+  try {
+    myStorage.value = (await fetchSecretStorage(props.username)) || []
+  } catch { /* 静默：储物袋未开不影响洞府其它区域 */ }
 }
 
 /** 切到「我的任务牌」时刷新，拿到任务阁里的最新进度 */
@@ -626,7 +686,7 @@ function realmClass(realm) {
 /* ===== 修行统计 ===== */
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px;
   margin: 0 32px 22px;
 }
@@ -834,6 +894,119 @@ function realmClass(realm) {
   border: 1px solid rgba(212, 175, 55, .4);
   color: rgba(226, 196, 110, .85);
   vertical-align: middle;
+}
+
+/* 已辟秘境 tab（秘境联动）：奇遇手札 + 稀有度配色 */
+.reward-history {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(196, 154, 92, .3);
+}
+
+.reward-history h3 {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--gold-soft);
+  margin: 0 0 10px;
+}
+
+.reward-row.r-rare { border-left: 2px solid rgba(74, 168, 255, .6); }
+.reward-row.r-epic { border-left: 2px solid rgba(176, 108, 255, .65); background: rgba(50, 20, 70, .18); }
+.reward-row.r-legendary {
+  border-left: 2px solid rgba(255, 176, 55, .7);
+  background: rgba(90, 45, 8, .16);
+}
+
+.reward-row .hit { color: #ffe9a8; font-weight: 700; }
+
+/* 储物空间 tab（秘境探索所得法宝格） */
+.storage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.treasure-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(196, 154, 92, .28);
+  border-left: 3px solid rgba(196, 154, 92, .45);
+  border-radius: 8px;
+  background: rgba(28, 16, 14, .35);
+  transition: border-color .25s, background .25s, transform .25s;
+}
+
+.treasure-card:hover { transform: translateY(-2px); }
+
+/* 稀有度配色：与奇遇手札同体系 */
+.treasure-card.r-rare { border-left-color: rgba(74, 168, 255, .65); background: rgba(16, 34, 58, .35); }
+.treasure-card.r-epic { border-left-color: rgba(176, 108, 255, .7); background: rgba(50, 20, 70, .28); }
+.treasure-card.r-legendary {
+  border-left-color: rgba(255, 176, 55, .8);
+  background: rgba(90, 45, 8, .25);
+  box-shadow: 0 0 12px rgba(255, 176, 55, .18);
+}
+
+.treasure-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px rgba(212, 175, 55, .35));
+}
+
+.treasure-main { flex: 1; min-width: 0; }
+
+.treasure-main h3 {
+  margin: 0;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--gold-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.treasure-meta { margin: 3px 0 0; display: flex; gap: 6px; }
+
+.type-tag,
+.rarity-tag {
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, .35);
+  color: rgba(226, 196, 110, .85);
+}
+
+.treasure-card.r-rare .rarity-tag { color: #9cccff; border-color: rgba(74, 168, 255, .5); }
+.treasure-card.r-epic .rarity-tag { color: #d0a6ff; border-color: rgba(176, 108, 255, .5); }
+.treasure-card.r-legendary .rarity-tag {
+  color: #ffd27a;
+  border-color: rgba(255, 176, 55, .6);
+  background: rgba(255, 176, 55, .12);
+}
+
+.treasure-detail {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.treasure-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  writing-mode: vertical-rl;
+  letter-spacing: 1px;
+  opacity: .7;
 }
 
 .pub-tag {

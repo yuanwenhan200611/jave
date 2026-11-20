@@ -9,6 +9,7 @@ import com.fenglin.springboottest.entity.SearchLog;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.entity.UserProfile;
 import com.fenglin.springboottest.entity.UserQuest;
+import com.fenglin.springboottest.entity.UserSecret;
 import com.fenglin.springboottest.entity.UserSkill;
 import com.fenglin.springboottest.mapper.CultivationLogMapper;
 import com.fenglin.springboottest.mapper.ForumIncomeMapper;
@@ -17,6 +18,7 @@ import com.fenglin.springboottest.mapper.SearchLogMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
 import com.fenglin.springboottest.mapper.UserProfileMapper;
 import com.fenglin.springboottest.mapper.UserQuestMapper;
+import com.fenglin.springboottest.mapper.UserSecretMapper;
 import com.fenglin.springboottest.mapper.UserSkillMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,6 +58,7 @@ public class ProfileService {
     private final SearchLogMapper searchLogMapper;
     private final UserQuestMapper userQuestMapper;
     private final UserSkillMapper userSkillMapper;
+    private final UserSecretMapper userSecretMapper;
     private final CultivationLogMapper cultivationLogMapper;
 
     /**
@@ -115,10 +118,16 @@ public class ProfileService {
         contributionTotal += forumIncomeSum(name, "contribution");
         stonesTotal += forumIncomeSum(name, "stones");
 
-        // 功法阁联动：已参悟功法 / 参悟消耗贡献值 / 可用贡献值（累计所得 - 参悟所耗 - 魔功殿血祭所耗）
+        // 功法阁联动：已参悟功法 / 参悟消耗贡献值 / 可用贡献值（累计所得 - 参悟所耗 - 魔功殿血祭所耗 - 秘境破界所耗）
         List<UserSkill> mySkills = userSkillMapper.selectList(
                 new LambdaQueryWrapper<UserSkill>().eq(UserSkill::getUsername, name));
         long skillSpent = mySkills.stream()
+                .mapToLong(s -> s.getCost() == null ? 0L : s.getCost())
+                .sum();
+
+        // 秘境联动：破界次数 / 破界消耗贡献值（引路费 + 门票）；表未建时容错为 0，洞府照常打开
+        List<UserSecret> mySecrets = safeSecrets(name);
+        long secretSpent = mySecrets.stream()
                 .mapToLong(s -> s.getCost() == null ? 0L : s.getCost())
                 .sum();
 
@@ -145,12 +154,14 @@ public class ProfileService {
         stats.put("stonesTotal", stonesTotal);
         stats.put("skillCount", mySkills.size());
         stats.put("skillSpent", skillSpent);
+        stats.put("secretCount", mySecrets.size());
+        stats.put("secretSpent", secretSpent);
         stats.put("cultivationPractice", cultivationLogs.size());
         stats.put("cultivationGain", cultivationGain);
         stats.put("cultivation", profile.getCultivation() == null ? 0L : profile.getCultivation());
         stats.put("stonesSpent", cultStonesSpent);
         stats.put("stonesAvailable", stonesTotal - cultStonesSpent);
-        stats.put("contributionAvailable", contributionTotal - skillSpent - cultContributionSpent);
+        stats.put("contributionAvailable", contributionTotal - skillSpent - secretSpent - cultContributionSpent);
 
         Map<String, Object> userBrief = new HashMap<>();
         userBrief.put("username", user.getUsername());
@@ -235,6 +246,19 @@ public class ProfileService {
         return list == null ? new ArrayList<>() : list;
     }
 
+    /**
+     * 秘境破界记录查询（容错）：user_secret 表尚未创建（未跑 ensure_db.sql）时
+     * 兜底为空列表，保证洞府接口不因新表缺失而整体挂掉。
+     */
+    private List<UserSecret> safeSecrets(String name) {
+        try {
+            return userSecretMapper.selectList(
+                    new LambdaQueryWrapper<UserSecret>().eq(UserSecret::getUsername, name));
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
     /** 血辩台收益合计（forum_income 表，column 限 stones/contribution） */
     private long forumIncomeSum(String username, String column) {
         Map<String, Object> row = forumIncomeMapper.selectMaps(
@@ -248,7 +272,8 @@ public class ProfileService {
         return Long.parseLong(String.valueOf(row.get("total")));
     }
 
-    /** 首次进入洞府：生成一份默认档案 */    private UserProfile createDefaultProfile(String username) {
+    /** 首次进入洞府：生成一份默认档案 */
+    private UserProfile createDefaultProfile(String username) {
         UserProfile profile = new UserProfile();
         profile.setUsername(username);
         profile.setNickname(username);

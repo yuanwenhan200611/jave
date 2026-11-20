@@ -74,41 +74,21 @@ public class SectService {
      * 浏览量 +1，并附一段随机奇遇文案。
      */
     public Map<String, Object> explore() {
-        // 1. 找到顶级「秘境」分类
-        Category root = categoryMapper.selectOne(
-                new LambdaQueryWrapper<Category>()
-                        .eq(Category::getName, "秘境")
-                        .eq(Category::getLevel, 1)
-                        .last("LIMIT 1"));
-        if (root == null) {
-            throw new IllegalArgumentException("宗门尚未开辟秘境");
-        }
-
-        // 2. 子孙分类范围内随机取一个上架秘境
-        List<Long> ids = homeService.descendantIdsIncludingSelf(root.getId());
-        ContentItem item = contentItemMapper.selectList(
-                new LambdaQueryWrapper<ContentItem>()
-                        .eq(ContentItem::getStatus, 1)
-                        .in(ContentItem::getCategoryId, ids)
-                        .last("ORDER BY RAND() LIMIT 1"))
-                .stream().findFirst().orElse(null);
+        ContentItem item = pickSecretItem();
         if (item == null) {
             throw new IllegalArgumentException("秘境尚未收录任何洞天");
         }
 
-        // 3. 浏览量 +1（SQL 自增防并发丢失）
+        // 浏览量 +1（SQL 自增防并发丢失）
         contentItemMapper.update(null, new UpdateWrapper<ContentItem>()
                 .setSql("view_count = view_count + 1")
                 .eq("id", item.getId()));
 
-        // 4. 组装返回：条目信息 + 分类名 + 奇遇文案
         Map<Long, String> nameMap = new HashMap<>();
         for (Category c : categoryMapper.selectList(null)) {
             nameMap.put(c.getId(), c.getName());
         }
         String catName = nameMap.getOrDefault(item.getCategoryId(), "未分类");
-        String encounter = ENCOUNTERS[ThreadLocalRandom.current().nextInt(ENCOUNTERS.length)]
-                .replace("{name}", item.getTitle() == null ? "秘境" : item.getTitle());
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", item.getId());
@@ -118,7 +98,35 @@ public class SectService {
         data.put("icon", item.getIcon());
         data.put("categoryName", catName);
         data.put("viewCount", (item.getViewCount() == null ? 0L : item.getViewCount()) + 1);
-        data.put("encounter", encounter);
+        data.put("encounter", encounterFor(item));
         return data;
+    }
+
+    /**
+     * 随机挑选一个上架秘境条目（供随机探秘/扣费探索复用）。
+     * 找不到顶级「秘境」分类或条目时返回 null。
+     */
+    public ContentItem pickSecretItem() {
+        Category root = categoryMapper.selectOne(
+                new LambdaQueryWrapper<Category>()
+                        .eq(Category::getName, "秘境")
+                        .eq(Category::getLevel, 1)
+                        .last("LIMIT 1"));
+        if (root == null) {
+            return null;
+        }
+        List<Long> ids = homeService.descendantIdsIncludingSelf(root.getId());
+        return contentItemMapper.selectList(
+                        new LambdaQueryWrapper<ContentItem>()
+                                .eq(ContentItem::getStatus, 1)
+                                .in(ContentItem::getCategoryId, ids)
+                                .last("ORDER BY RAND() LIMIT 1"))
+                .stream().findFirst().orElse(null);
+    }
+
+    /** 随机奇遇文案（{name} 替换为秘境名） */
+    public String encounterFor(ContentItem item) {
+        return ENCOUNTERS[ThreadLocalRandom.current().nextInt(ENCOUNTERS.length)]
+                .replace("{name}", item.getTitle() == null ? "秘境" : item.getTitle());
     }
 }

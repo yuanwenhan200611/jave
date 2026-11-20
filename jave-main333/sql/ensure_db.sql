@@ -283,6 +283,7 @@ SELECT COUNT(*) AS quest_count FROM `quest`;
 -- 10. 功法阁·贡献值体系（幂等）
 --    content_item.required_contribution  参悟所需贡献值（按品阶高深定价，仅功法类）
 --    user_skill                          参悟记录（联动洞府：已习功法 / 消耗贡献值）
+--    user_secret                         破界记录（秘境进入 / 消耗贡献值）
 --    经济闭环：任务阁交差赚贡献值 → 功法阁参悟花贡献值
 --    可用贡献值 = 累计所得(user_quest) - 已耗于参悟(user_skill)
 -- ============================================================
@@ -313,22 +314,96 @@ CREATE TABLE IF NOT EXISTS `user_skill` (
   KEY `idx_us_item` (`item_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '功法阁·弟子参悟记录';
 
--- 10.3 按品阶给「功法」子树的条目定价（幂等：仅刷值为 0 的功法条目）
---      天阶 1500 / 地阶 800 / 玄阶 400 / 黄阶 150 / 其它 100
+-- 10.3 按品阶给「功法」子树的条目定价（强制全量重刷，保证品阶梯度始终生效）
+--      品阶越高贡献值越贵：神 8000 / 圣 6000 / 魔 5000 / 天 3000 / 地 1500 /
+--      王·皇 1200 / 玄 600 / 黄 200 / 凡·未标注 100
 UPDATE `content_item` ci
 JOIN `category` c ON c.id = ci.category_id
 LEFT JOIN `category` p ON p.id = c.parent_id
 SET ci.required_contribution = CASE ci.grade
-  WHEN '天阶' THEN 1500
-  WHEN '地阶' THEN 800
-  WHEN '玄阶' THEN 400
-  WHEN '黄阶' THEN 150
+  WHEN '神阶' THEN 8000
+  WHEN '圣阶' THEN 6000
+  WHEN '魔阶' THEN 5000
+  WHEN '天阶' THEN 3000
+  WHEN '地阶' THEN 1500
+  WHEN '王阶' THEN 1200
+  WHEN '皇阶' THEN 1200
+  WHEN '玄阶' THEN 600
+  WHEN '黄阶' THEN 200
+  WHEN '凡阶' THEN 100
   ELSE 100
 END
-WHERE ci.required_contribution = 0
-  AND (c.name = '功法' OR p.name = '功法');
+WHERE (c.name = '功法' OR p.name = '功法');
 
 SELECT COUNT(*) AS priced_skills FROM `content_item` WHERE `required_contribution` > 0;
+
+-- 10.4 秘境进入记录表（幂等）
+--    经济闭环：任务阁交差赚贡献值 → 功法阁参悟 / 秘境破界花贡献值
+--    可用贡献值 = 累计所得(user_quest) - 已耗于参悟(user_skill) - 已耗于破界(user_secret)
+CREATE TABLE IF NOT EXISTS `user_secret` (
+  `id`          BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`    VARCHAR(50) NOT NULL                COMMENT '破界人（关联 user.username）',
+  `item_id`     BIGINT      NOT NULL                COMMENT '秘境条目 id（关联 content_item.id）',
+  `cost`        BIGINT      NOT NULL DEFAULT 0      COMMENT '进入时消耗的贡献值快照（随机探秘记引路费）',
+  `title`       VARCHAR(100) NOT NULL               COMMENT '秘境名快照',
+  `grade`       VARCHAR(20) NULL                    COMMENT '品阶快照',
+  `icon`        VARCHAR(16) NULL                    COMMENT '图标快照',
+  `create_time` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '进入时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_usecret_user` (`username`),
+  KEY `idx_usecret_item` (`item_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '秘境·弟子破界记录';
+
+-- 10.5 按品阶给「秘境」子树的条目定门票价（强制全量重刷，保证品阶梯度始终生效）
+--      品阶越高门票越贵，高级秘境绝不免费：神 5000 / 圣 4000 / 魔 3000 /
+--      天 2000 / 地 1200 / 王·皇 800 / 玄 400
+--      仅黄阶 / 凡阶 / 未标注 = 低端「无主之境」：不设门票（0），人人可进，但收获寒酸
+UPDATE `content_item` ci
+JOIN `category` c  ON c.id  = ci.category_id
+LEFT JOIN `category` p  ON p.id  = c.parent_id
+LEFT JOIN `category` p2 ON p2.id = p.parent_id
+SET ci.required_contribution = CASE ci.grade
+  WHEN '神阶' THEN 5000
+  WHEN '圣阶' THEN 4000
+  WHEN '魔阶' THEN 3000
+  WHEN '天阶' THEN 2000
+  WHEN '地阶' THEN 1200
+  WHEN '王阶' THEN 800
+  WHEN '皇阶' THEN 800
+  WHEN '玄阶' THEN 400
+  WHEN '黄阶' THEN 0
+  WHEN '凡阶' THEN 0
+  ELSE 0
+END
+WHERE (c.name = '秘境' OR p.name = '秘境' OR p2.name = '秘境');
+
+SELECT COUNT(*) AS priced_secrets FROM `content_item`
+WHERE `required_contribution` > 0
+  AND `category_id` IN (
+    SELECT c2.id FROM `category` c2
+    LEFT JOIN `category` c3 ON c3.id = c2.parent_id
+    LEFT JOIN `category` c4 ON c4.id = c3.parent_id
+    WHERE c2.name = '秘境' OR c3.name = '秘境' OR c4.name = '秘境'
+  );
+
+-- 10.6 秘境探索奖励表（幂等）
+--    奖励不固定：灵石/贡献值（入 forum_income, source=secret）、
+--    修为（落 cultivation_log, method_key=secret）、功法（免贡落 user_skill, cost=0）、
+--    残篇/法宝/神通/道心通明等奇遇留档本表
+CREATE TABLE IF NOT EXISTS `secret_reward` (
+  `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`     VARCHAR(50)  NOT NULL                COMMENT '得主（关联 user.username）',
+  `item_id`      BIGINT       NOT NULL                COMMENT '触发秘境条目 id（关联 content_item.id）',
+  `reward_type`  VARCHAR(30)  NOT NULL                COMMENT '类型：stones/contribution/cultivation/technique/fragment/artifact/divine_ability/dao_clarity',
+  `reward_name`  VARCHAR(100) NULL                    COMMENT '奖励名称快照',
+  `rarity`       VARCHAR(20)  NOT NULL DEFAULT 'common' COMMENT '稀有度：common/rare/epic/legendary',
+  `amount`       BIGINT       NOT NULL DEFAULT 0      COMMENT '数值奖励量（灵石/贡献值/修为），奇遇类为 0',
+  `detail`       VARCHAR(500) NULL                    COMMENT '奖励描述（奇遇文案）',
+  `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '入账时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_sreward_user` (`username`),
+  KEY `idx_sreward_item` (`item_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '秘境·探索奖励记录';
 
 -- ============================================================
 -- 11. 魔功殿·修为体系（幂等）

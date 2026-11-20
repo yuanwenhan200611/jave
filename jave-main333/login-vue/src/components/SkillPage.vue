@@ -2,64 +2,104 @@
   <div class="page">
     <SectNav active="skill" :username="username" @nav="k => emit('nav', k)" @logout="emit('logout')" />
 
-    <!-- 阁名 + 背景 -->
+    <!-- 阁名 + 血功池 -->
     <header class="hero">
-      <span class="hero-seal">功</span>
-      <div>
-        <h1>功法阁</h1>
-        <p class="hero-desc">{{ rootDesc }}</p>
+      <div class="hero-side" aria-hidden="true">
+        <span class="hero-rune">血</span><span class="hero-rune">煞</span><span class="hero-rune">噬</span><span class="hero-rune">天</span>
+      </div>
+      <div class="hero-core">
+        <span class="hero-seal">魔</span>
+        <div class="hero-text">
+          <h1>功 法 阁</h1>
+          <p class="hero-desc">{{ rootDesc }}</p>
+        </div>
+        <div class="treasury" title="当前可用贡献值">
+          <span class="treasury-label">血功池</span>
+          <span class="treasury-num">{{ skillAvailable }}</span>
+          <span class="treasury-unit">贡献值</span>
+        </div>
+      </div>
+      <div class="hero-side right" aria-hidden="true">
+        <span class="hero-rune">万</span><span class="hero-rune">法</span><span class="hero-rune">归</span><span class="hero-rune">宗</span>
       </div>
     </header>
 
-    <!-- 种类分堂 -->
+    <!-- 分堂腰牌 + 排序 -->
     <section class="tabs-wrap">
-      <div class="tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          type="button"
-          class="tab"
-          :class="{ active: tab.id === activeTab }"
-          @click="switchTab(tab.id)"
-        >
-          <span class="tab-icon">{{ tab.icon }}</span>{{ tab.name }}
-          <small v-if="counts[tab.id]" class="tab-count">{{ counts[tab.id] }}</small>
-        </button>
-      </div>
+      <div class="toolbar">
+        <div class="tabs">
+          <button
+            v-for="tab in tabs"
+            :key="tab.id"
+            type="button"
+            class="tab"
+            :class="{ active: tab.id === activeTab }"
+            @click="switchTab(tab.id)"
+          >
+            <span class="tab-icon">{{ tab.icon }}</span>
+            <span class="tab-name">{{ tab.name }}</span>
+            <small v-if="counts[tab.id]" class="tab-count">{{ counts[tab.id] }}</small>
+          </button>
+        </div>
 
-      <!-- 排序 -->
-      <div class="sort-bar">
-        <button
-          v-for="s in sortOptions"
-          :key="s.value"
-          type="button"
-          class="sort-btn"
-          :class="{ active: sort === s.value }"
-          @click="changeSort(s.value)"
-        >{{ s.label }}</button>
+        <div class="sort-bar">
+          <span class="sort-label">排序</span>
+          <button
+            v-for="s in sortOptions"
+            :key="s.value"
+            type="button"
+            class="sort-btn"
+            :class="{ active: sort === s.value }"
+            @click="changeSort(s.value)"
+          >{{ s.label }}</button>
+        </div>
       </div>
 
       <p v-if="error" class="empty">{{ error }}</p>
       <p v-else-if="!loading && !list.length" class="empty">此阁暂未收录功法，另择高就</p>
 
-      <ul v-else class="list">
-        <li v-for="item in list" :key="item.id" class="row" @click="openDetail(item)">
-          <span class="row-icon">{{ item.icon || '📜' }}</span>
-          <div class="row-main">
-            <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
-            <p>{{ item.description }}</p>
+      <!-- 玉简血书：一条条功法长卷 -->
+      <ul v-else class="scroll-list">
+        <li
+          v-for="item in list"
+          :key="item.id"
+          class="scroll-row"
+          :class="gradeClass(item.grade)"
+          @click="openDetail(item)"
+        >
+          <div class="spine" aria-hidden="true"></div>
+          <span class="row-rune">{{ item.icon || '📜' }}</span>
+          <div class="row-body">
+            <div class="row-title-line">
+              <h3 class="row-title">{{ item.title }}</h3>
+              <span v-if="item.grade" class="grade-badge">{{ item.grade }}</span>
+              <span v-if="isLearned(item.id)" class="learned-badge">已参悟</span>
+            </div>
+            <p class="row-desc">{{ item.description }}</p>
+            <div class="row-tags">
+              <span class="tag">{{ item.categoryName }}</span>
+              <span class="tag">{{ item.viewCount }} 人参悟</span>
+            </div>
           </div>
-          <div class="row-meta">
-            <span v-if="isLearned(item.id)" class="row-learned">已参悟</span>
-            <span v-else-if="item.requiredContribution > 0" class="row-cost">贡献 {{ item.requiredContribution }}</span>
-            <span>{{ item.categoryName }} · {{ item.viewCount }} 阅</span>
+          <div class="cost-plaque" :class="{ free: !(item.requiredContribution > 0) }">
+            <template v-if="isLearned(item.id)">
+              <span class="cost-done">✦ 已收录洞府</span>
+            </template>
+            <template v-else-if="item.requiredContribution > 0">
+              <span class="cost-num">{{ item.requiredContribution }}</span>
+              <span class="cost-unit">贡献值</span>
+            </template>
+            <template v-else>
+              <span class="cost-free">免贡参悟</span>
+            </template>
           </div>
+          <span class="row-arrow" aria-hidden="true">▸</span>
         </li>
       </ul>
 
       <div v-if="pages > 1" class="pager">
         <button type="button" class="pager-btn" :disabled="page <= 1" @click="gotoPage(page - 1)">上一页</button>
-        <span class="pager-info">第 {{ page }} / {{ pages }} 页</span>
+        <span class="pager-info">第 {{ page }} / {{ pages }} 页 · 共 {{ total }} 卷</span>
         <button type="button" class="pager-btn" :disabled="page >= pages" @click="gotoPage(page + 1)">下一页</button>
       </div>
     </section>
@@ -73,7 +113,7 @@
         <div class="detail-head">
           <span class="detail-icon">{{ detail.icon || '📜' }}</span>
           <div>
-            <h2>{{ detail.title }}<small v-if="detail.grade" class="grade">{{ detail.grade }}</small></h2>
+            <h2>{{ detail.title }}<small v-if="detail.grade" class="grade-badge">{{ detail.grade }}</small></h2>
             <p class="detail-crumb">{{ detail.categoryPath }}</p>
           </div>
         </div>
@@ -87,12 +127,14 @@
             <span class="learned-tag">✅ 已参悟 · 收录洞府</span>
           </template>
           <template v-else>
-            <span class="cost-info">
-              参悟需贡献值 <b>{{ detail.requiredContribution }}</b>
-              <small>（当前可用 {{ skillAvailable }}）</small>
-            </span>
+            <div class="cost-hero">
+              <span class="cost-hero-label">参悟所需</span>
+              <span class="cost-hero-num">{{ detail.requiredContribution }}</span>
+              <span class="cost-hero-unit">贡献值</span>
+              <span class="cost-hero-balance">血功池 {{ skillAvailable }}</span>
+            </div>
             <button type="button" class="learn-btn" :disabled="learning" @click="learn">
-              {{ learning ? '参悟中……' : '参悟此功法' }}
+              {{ learning ? '参悟中……' : '血契参悟此功' }}
             </button>
             <p v-if="skillAvailable < detail.requiredContribution" class="cost-warn">
               贡献值不足 —— <span class="goto-quest" @click="emit('nav', 'quest')">去任务阁交差赚贡献值 →</span>
@@ -168,6 +210,16 @@ const learning = ref(false)
 
 /** 功法顶级分类 id（含子孙计数） */
 let skillRootId = 0
+
+/** 品阶 → 血书脊色（天/圣/神品猩红，地/王品紫煞，玄品幽蓝，黄/凡品暗金） */
+function gradeClass(grade) {
+  const g = String(grade || '')
+  if (/[天圣神魔]/.test(g)) return 'g-heaven'
+  if (/[地王皇]/.test(g)) return 'g-earth'
+  if (/玄/.test(g)) return 'g-mystic'
+  if (/[黄凡凡]/.test(g)) return 'g-common'
+  return ''
+}
 
 onMounted(async () => {
   try {
@@ -290,8 +342,7 @@ async function learn() {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
-  /* 半透明面板：全屏背景透出，内容靠自身卡片底色保证可读 */
-  background: rgba(8, 5, 12, .20);
+  background: rgba(8, 5, 12, .22);
   border: 1px solid rgba(196, 154, 92, .18);
   border-radius: 22px;
   overflow: hidden;
@@ -301,41 +352,59 @@ async function learn() {
     0 0 50px rgba(200, 16, 46, .12);
 }
 
-/* 背景图：模糊铺满，压暗托文字 */
-/* ===== 阁名 ===== */
+/* ===== 阁名 + 血功池 ===== */
 .hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 30px 26px 20px;
+  border-bottom: 1px solid rgba(196, 154, 92, .16);
+  background:
+    radial-gradient(60% 120% at 50% -30%, rgba(200, 16, 46, .22), transparent 70%),
+    rgba(10, 6, 14, .5);
+}
+
+.hero-core {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 34px 32px 22px;
+  min-width: 0;
 }
 
 .hero-seal {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
   display: grid;
   place-items: center;
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 700;
   color: #f7e9c4;
-  background: linear-gradient(145deg, #8c0f1d, #c8102e);
+  background: linear-gradient(145deg, #6b0a16, #c8102e 70%, #8c0f1d);
   border: 2px solid var(--gold);
-  box-shadow: 0 4px 18px rgba(200, 16, 46, .5), inset 0 0 10px rgba(0, 0, 0, .35);
+  box-shadow: 0 0 22px rgba(200, 16, 46, .55), inset 0 0 12px rgba(0, 0, 0, .45);
   transform: rotate(-6deg);
   flex-shrink: 0;
+  animation: seal-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes seal-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(200, 16, 46, .45), inset 0 0 12px rgba(0, 0, 0, .45); }
+  50% { box-shadow: 0 0 34px rgba(200, 16, 46, .75), inset 0 0 12px rgba(0, 0, 0, .45); }
 }
 
 .hero h1 {
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
   color: #f3e8d6;
-  text-shadow: 0 2px 18px rgba(200, 16, 46, .45);
+  text-shadow: 0 0 22px rgba(200, 16, 46, .6), 0 2px 4px rgba(0, 0, 0, .6);
   margin: 0;
+  white-space: nowrap;
 }
 
 .hero-desc {
@@ -345,30 +414,89 @@ async function learn() {
   margin: 6px 0 0;
 }
 
-/* ===== 分堂 tab ===== */
-.tabs-wrap { padding: 0 32px 24px; }
-
-.tabs {
+/* 血功池：贡献值余额，大字高亮 */
+.treasury {
   display: flex;
-  flex-wrap: wrap;
+  align-items: baseline;
   gap: 8px;
-  margin-bottom: 14px;
+  padding: 10px 18px;
+  border: 1px solid rgba(212, 175, 55, .5);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(140, 15, 29, .55), rgba(60, 8, 16, .8)),
+    rgba(12, 8, 18, .8);
+  box-shadow: 0 0 18px rgba(200, 16, 46, .35), inset 0 0 14px rgba(0, 0, 0, .4);
+  flex-shrink: 0;
 }
+
+.treasury-label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: rgba(247, 233, 196, .85);
+}
+
+.treasury-num {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffe9a8;
+  text-shadow: 0 0 14px rgba(212, 175, 55, .75);
+  font-variant-numeric: tabular-nums;
+}
+
+.treasury-unit {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .85);
+}
+
+/* 两侧符文柱 */
+.hero-side {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.hero-rune {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: rgba(200, 16, 46, .75);
+  border: 1px solid rgba(200, 16, 46, .3);
+  border-radius: 4px;
+  background: rgba(30, 6, 12, .45);
+}
+
+/* ===== 分堂腰牌 + 排序 ===== */
+.tabs-wrap { padding: 0 26px 26px; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 14px;
+}
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 18px;
+  gap: 7px;
+  padding: 8px 16px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px 14px 6px 14px;
   background: rgba(12, 8, 18, .72);
   color: var(--text-soft);
   font-family: inherit;
   font-size: 14px;
   letter-spacing: 2px;
   cursor: pointer;
-  transition: color .18s, border-color .18s, background .18s;
+  transition: color .18s, border-color .18s, background .18s, box-shadow .18s;
 }
 
 .tab:hover { color: var(--gold-soft); border-color: var(--gold); }
@@ -376,23 +504,24 @@ async function learn() {
 .tab.active {
   color: #f7e9c4;
   border-color: var(--gold);
-  background: linear-gradient(135deg, rgba(140, 15, 29, .7), rgba(200, 16, 46, .5));
-  box-shadow: 0 0 14px rgba(200, 16, 46, .3);
+  background: linear-gradient(135deg, rgba(140, 15, 29, .75), rgba(200, 16, 46, .5));
+  box-shadow: 0 0 14px rgba(200, 16, 46, .35);
 }
 
 .tab-icon { font-size: 15px; }
+.tab-count { font-size: 11px; color: var(--text-dim); letter-spacing: 0; }
 
-.tab-count {
-  font-size: 11px;
+.sort-bar { display: flex; align-items: center; gap: 6px; }
+
+.sort-label {
+  font-size: 12px;
+  letter-spacing: 2px;
   color: var(--text-dim);
-  letter-spacing: 0;
+  margin-right: 2px;
 }
 
-/* ===== 排序 ===== */
-.sort-bar { display: flex; gap: 6px; margin-bottom: 12px; }
-
 .sort-btn {
-  padding: 4px 14px;
+  padding: 4px 13px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: rgba(12, 8, 18, .5);
@@ -409,100 +538,204 @@ async function learn() {
 .sort-btn.active {
   color: #f7e9c4;
   border-color: var(--gold);
-  background: linear-gradient(135deg, rgba(140, 15, 29, .7), rgba(200, 16, 46, .5));
-  box-shadow: 0 0 12px rgba(200, 16, 46, .3);
+  background: linear-gradient(135deg, rgba(140, 15, 29, .75), rgba(200, 16, 46, .5));
 }
 
-/* ===== 列表 ===== */
+/* ===== 玉简血书列表：一条条功法长卷 ===== */
 .empty {
   text-align: center;
   font-size: 13px;
   color: var(--text-soft);
   letter-spacing: 1px;
-  padding: 22px 0;
+  padding: 26px 0;
 }
 
-.list {
+.scroll-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.row {
+.scroll-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 12px 16px;
-  background: rgba(10, 7, 15, .78);
+  padding: 14px 18px 14px 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(24, 10, 20, .85), rgba(12, 8, 18, .92) 40%, rgba(12, 8, 18, .92)),
+    rgba(10, 7, 15, .9);
   cursor: pointer;
-  transition: background .15s;
+  overflow: hidden;
+  transition: border-color .18s, box-shadow .18s, transform .18s;
 }
 
-.row + .row { border-top: 1px solid var(--border); }
-.row:hover { background: rgba(28, 18, 36, .65); }
+/* 左侧血书脊：按品阶变色 */
+.spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, .55), rgba(196, 154, 92, .25));
+}
 
-.row-icon { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.scroll-row.g-heaven .spine { background: linear-gradient(180deg, #ff2e4c, #8c0f1d); }
+.scroll-row.g-earth .spine { background: linear-gradient(180deg, #b06cff, #4a1a7a); }
+.scroll-row.g-mystic .spine { background: linear-gradient(180deg, #4aa8ff, #173a7a); }
+.scroll-row.g-common .spine { background: linear-gradient(180deg, #d4af37, #6b5a20); }
 
-.row-main { flex: 1; min-width: 0; }
+/* 悬停：血气泛起 */
+.scroll-row:hover {
+  border-color: rgba(200, 16, 46, .55);
+  box-shadow: 0 0 20px rgba(200, 16, 46, .25), 0 8px 24px rgba(0, 0, 0, .4);
+  transform: translateX(4px);
+}
 
-.row-main h3 {
-  font-size: 15px;
-  color: #f3e8d6;
+.scroll-row:hover .row-title { color: #ffe9c9; }
+
+.row-rune {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  border: 1px solid rgba(212, 175, 55, .35);
+  border-radius: 10px;
+  background: rgba(30, 12, 20, .6);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, .5);
+}
+
+.row-body { flex: 1; min-width: 0; }
+
+.row-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.row-title {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 16px;
   letter-spacing: 1px;
-  margin: 0 0 3px;
+  color: #f3e8d6;
+  margin: 0;
+  transition: color .18s;
 }
 
-.row-main p {
+.grade-badge {
+  display: inline-block;
+  padding: 1px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: #f7e9c4;
+  background: linear-gradient(135deg, rgba(140, 15, 29, .85), rgba(200, 16, 46, .6));
+  border: 1px solid rgba(212, 175, 55, .45);
+  vertical-align: middle;
+  letter-spacing: 1px;
+}
+
+.learned-badge {
+  display: inline-block;
+  padding: 1px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: rgba(120, 220, 160, .95);
+  border: 1px solid rgba(120, 220, 160, .4);
+  background: rgba(20, 40, 30, .35);
+  letter-spacing: 1px;
+}
+
+.row-desc {
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-soft);
-  margin: 0;
+  margin: 0 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.row-meta {
-  font-size: 12px;
-  color: rgba(212, 175, 55, .6);
+.row-tags { display: flex; gap: 6px; }
+
+.tag {
+  padding: 1px 8px;
+  font-size: 11px;
   letter-spacing: 1px;
+  border-radius: 4px;
+  color: rgba(212, 175, 55, .7);
+  border: 1px solid rgba(196, 154, 92, .25);
+  background: rgba(12, 8, 18, .5);
+}
+
+/* ===== 贡献值价牌：整行最醒目的元素 ===== */
+.cost-plaque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 96px;
+  padding: 8px 14px;
   flex-shrink: 0;
+  border: 1px solid rgba(212, 175, 55, .55);
+  border-radius: 10px;
+  background: linear-gradient(160deg, rgba(140, 15, 29, .5), rgba(45, 8, 14, .85));
+  box-shadow: 0 0 14px rgba(200, 16, 46, .3), inset 0 0 12px rgba(0, 0, 0, .35);
 }
 
-.row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-
-.row-cost {
-  padding: 1px 8px;
-  font-size: 11px;
-  border-radius: 999px;
-  color: #f7e9c4;
-  background: linear-gradient(135deg, rgba(140, 15, 29, .8), rgba(200, 16, 46, .6));
-  border: 1px solid rgba(212, 175, 55, .4);
-  letter-spacing: 0;
+.cost-num {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #ffe9a8;
+  text-shadow: 0 0 16px rgba(212, 175, 55, .8);
+  font-variant-numeric: tabular-nums;
 }
 
-.row-learned {
-  padding: 1px 8px;
+.cost-unit {
   font-size: 11px;
-  border-radius: 999px;
+  letter-spacing: 2px;
+  color: rgba(247, 233, 196, .8);
+}
+
+.cost-plaque.free {
+  border-color: rgba(120, 220, 160, .4);
+  background: linear-gradient(160deg, rgba(20, 45, 32, .6), rgba(12, 20, 16, .85));
+  box-shadow: none;
+}
+
+.cost-free {
+  font-size: 14px;
+  letter-spacing: 2px;
   color: rgba(120, 220, 160, .95);
-  border: 1px solid rgba(120, 220, 160, .4);
-  letter-spacing: 0;
 }
 
-.grade {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 1px 8px;
-  font-size: 11px;
-  border-radius: 999px;
-  color: #f7e9c4;
-  background: linear-gradient(135deg, rgba(140, 15, 29, .8), rgba(200, 16, 46, .6));
-  border: 1px solid rgba(212, 175, 55, .4);
-  vertical-align: middle;
+.cost-done {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(120, 220, 160, .95);
+  text-align: center;
+}
+
+.row-arrow {
+  font-size: 16px;
+  color: rgba(212, 175, 55, .5);
+  flex-shrink: 0;
+  transition: color .18s, transform .18s;
+}
+
+.scroll-row:hover .row-arrow {
+  color: var(--gold-soft);
+  transform: translateX(3px);
 }
 
 /* ===== 分页 ===== */
@@ -511,7 +744,7 @@ async function learn() {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
 .pager-btn {
@@ -613,43 +846,65 @@ async function learn() {
   margin: 0;
 }
 
-/* ===== 参悟区（贡献值经济） ===== */
+/* ===== 参悟区：贡献值大价牌 ===== */
 .learn-box {
   margin-top: 16px;
-  padding: 14px 16px;
-  border: 1px solid rgba(212, 175, 55, .35);
+  padding: 16px;
+  border: 1px solid rgba(212, 175, 55, .4);
   border-radius: 12px;
-  background: rgba(12, 8, 18, .6);
+  background:
+    radial-gradient(90% 120% at 50% 0%, rgba(200, 16, 46, .16), transparent 70%),
+    rgba(12, 8, 18, .7);
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.cost-info {
-  flex: 1;
+.cost-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cost-hero-label {
   font-size: 13px;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   color: var(--text-soft);
 }
 
-.cost-info b {
-  font-size: 16px;
-  color: #f7e9c4;
-  margin: 0 2px;
+.cost-hero-num {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffe9a8;
+  text-shadow: 0 0 20px rgba(212, 175, 55, .8), 0 0 40px rgba(200, 16, 46, .4);
+  font-variant-numeric: tabular-nums;
 }
 
-.cost-info small {
-  color: var(--text-dim);
-  letter-spacing: 0;
+.cost-hero-unit {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(247, 233, 196, .85);
+}
+
+.cost-hero-balance {
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  color: rgba(212, 175, 55, .85);
+  border: 1px solid rgba(196, 154, 92, .35);
+  background: rgba(12, 8, 18, .55);
 }
 
 .learn-btn {
-  padding: 8px 20px;
+  padding: 9px 26px;
   border: 1px solid var(--gold);
   border-radius: 10px;
   color: #f7e9c4;
-  background: linear-gradient(135deg, rgba(140, 15, 29, .85), rgba(200, 16, 46, .65));
+  background: linear-gradient(135deg, rgba(140, 15, 29, .9), rgba(200, 16, 46, .7));
   font-family: inherit;
   font-size: 14px;
   letter-spacing: 2px;
@@ -658,7 +913,7 @@ async function learn() {
 }
 
 .learn-btn:hover:not(:disabled) {
-  box-shadow: 0 0 16px rgba(200, 16, 46, .5);
+  box-shadow: 0 0 20px rgba(200, 16, 46, .55);
   transform: translateY(-1px);
 }
 
@@ -675,7 +930,6 @@ async function learn() {
 }
 
 .cost-warn {
-  width: 100%;
   margin: 0;
   font-size: 12px;
   letter-spacing: 1px;
@@ -721,7 +975,7 @@ async function learn() {
 
 /* ===== 页脚 / 响应式 ===== */
 .page-foot {
-  padding: 16px 32px 20px;
+  padding: 16px 26px 20px;
   text-align: center;
   font-size: 12px;
   letter-spacing: 1px;
@@ -730,9 +984,15 @@ async function learn() {
 }
 
 @media (max-width: 780px) {
-  .hero { padding: 26px 18px 18px; }
-  .hero h1 { font-size: 21px; letter-spacing: 2px; }
-  .tabs-wrap { padding: 0 18px 20px; }
-  .row-meta { display: none; }
+  .hero { padding: 24px 16px 16px; flex-wrap: wrap; }
+  .hero-side { display: none; }
+  .hero h1 { font-size: 22px; letter-spacing: 3px; }
+  .hero-core { width: 100%; justify-content: flex-start; }
+  .tabs-wrap { padding: 0 16px 20px; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .cost-plaque { min-width: 76px; padding: 6px 10px; }
+  .cost-num { font-size: 19px; }
+  .row-desc { white-space: normal; }
+  .row-arrow { display: none; }
 }
 </style>
