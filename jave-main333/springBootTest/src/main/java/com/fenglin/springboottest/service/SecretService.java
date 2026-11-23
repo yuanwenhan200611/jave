@@ -35,15 +35,16 @@ import java.util.stream.Collectors;
  *   可用贡献值 = 累计 - 已耗
  *
  * 进入规则：
- *   · 指定秘境：门票 = content_item.required_contribution（按品阶定价）
- *   · 随机探秘：固定「天机引路费」ROAM_FEE
- *   · 每人每秘境只可进入一次，进入后免费重游（已开辟）
+ *   · 指定秘境：门票 = content_item.required_contribution（按品阶定价），
+ *     **每次破界都收**，已开辟重入亦不免费
+ *   · 随机探秘：固定「天机引路费」ROAM_FEE = 200，**每次**探秘都要交，
+ *     不存在「已开辟免费重游」——开辟过的秘境再抽到，照样扣引路费
  *
- * 探索奖励（不固定，按秘境类型 × 品阶掷骰）：
- *   幻境秘境：道心通明（修为暴涨）/ 天赋神通 / 幻境功法（免贡习得）
+ * 探索奖励（不固定，按秘境类型 × 品阶掷骰；**秘境永不产出贡献值**）：
+ *   幻境秘境：道心通明（修为）/ 天赋神通 / 幻境功法（免贡习得）
  *   上古秘境：残篇上古功法 / 法宝 / 极小概率完整上古功法或完整法宝
  *   普通秘境：法宝 / 功法
- *   所有秘境：灵石 / 贡献值 / 修为（保底，随品阶放大）
+ *   所有秘境：灵石 / 修为（随机探秘口径大幅收紧，常常颗粒无收）
  */
 @Service
 @RequiredArgsConstructor
@@ -51,8 +52,8 @@ public class SecretService {
 
     private static final int MAX_LIST = 20;
 
-    /** 随机探秘的「天机引路费」 */
-    public static final long ROAM_FEE = 20;
+    /** 随机探秘的「天机引路费」：每次必收，已开辟的秘境再探亦不例外 */
+    public static final long ROAM_FEE = 200;
 
     private final ContentItemMapper contentItemMapper;
     private final CategoryMapper categoryMapper;
@@ -86,7 +87,8 @@ public class SecretService {
     }
 
     /**
-     * 破界进入指定秘境：门票扣减可用贡献值，首入掷探索奖励。
+     * 破界进入指定秘境：**门票每次照收**（已开辟重入亦不免费），
+     * 扣减可用贡献值后掷探索奖励（不产贡献值）。
      * @return { record: UserSecret, rewards: [...] }
      */
     @Transactional
@@ -102,20 +104,19 @@ public class SecretService {
         }
         long ticket = item.getRequiredContribution() == null ? 0L : item.getRequiredContribution();
 
-        Long already = userSecretMapper.selectCount(
+        // 已开辟的秘境没有豁免：再破界一次，门票照收
+        boolean revisited = userSecretMapper.selectCount(
                 new LambdaQueryWrapper<UserSecret>().eq(UserSecret::getUsername, name)
-                        .eq(UserSecret::getItemId, itemId));
-        if (already != null && already > 0) {
-            throw new IllegalArgumentException("此秘境你已开辟过，可免费重游");
-        }
+                        .eq(UserSecret::getItemId, itemId)) > 0;
 
         long available = availableContribution(name);
         if (ticket > available) {
             throw new IllegalArgumentException("贡献值不足：破界「" + item.getTitle()
-                    + "」需门票 " + ticket + "，你当前可用 " + available
-                    + "。去任务阁交差挣贡献值。");
+                    + "」需门票 " + ticket + (revisited ? "（已开辟重入同样收费）" : "")
+                    + "，你当前可用 " + available + "。去任务阁交差挣贡献值。");
         }
 
+        // 每次破界都落一条支出账（成本快照 = 本次门票），供贡献值账本扣减
         UserSecret record = new UserSecret();
         record.setUsername(name);
         record.setItemId(itemId);
@@ -126,18 +127,19 @@ public class SecretService {
         userSecretMapper.insert(record);
         record = userSecretMapper.selectById(record.getId());
 
-        // 首入必有收获：至少掷出基础 loot
+        // 破界必有收获：至少掷出基础 loot
         List<Map<String, Object>> rewards = rollRewards(name, item, true);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("record", record);
+        data.put("revisited", revisited);
         data.put("rewards", rewards);
         return data;
     }
 
     /**
-     * 随机探秘（扣费版）：先收「天机引路费」，随机挑一个秘境，
-     * 记为一次进入（首入收引路费，已开辟免费重游），并掷探索奖励。
+     * 随机探秘：**每次都收「天机引路费」**（已开辟的秘境也不免费），
+     * 随机挑一个秘境，记一次破界支出，再按寒酸口径掷收获（不产贡献值）。
      */
     @Transactional
     public Map<String, Object> roam(String username) {
@@ -148,36 +150,33 @@ public class SecretService {
             throw new IllegalArgumentException("秘境尚未收录任何洞天");
         }
 
-        Long already = userSecretMapper.selectCount(
-                new LambdaQueryWrapper<UserSecret>().eq(UserSecret::getUsername, name)
-                        .eq(UserSecret::getItemId, item.getId()));
-
-        // 引路费：首入此秘境收固定引路费；已开辟过的秘境随机到则免费重游
-        boolean firstEntry = (already == null || already == 0);
-        long fee = firstEntry ? ROAM_FEE : 0L;
+        // 引路费无豁免：无论此前是否开辟过，进一次收一次
         long available = availableContribution(name);
-        if (fee > available) {
-            throw new IllegalArgumentException("贡献值不足：天机引路需 " + fee
+        if (ROAM_FEE > available) {
+            throw new IllegalArgumentException("贡献值不足：天机引路需 " + ROAM_FEE
                     + "，你当前可用 " + available + "。去任务阁交差挣贡献值。");
         }
+
+        boolean revisited = userSecretMapper.selectCount(
+                new LambdaQueryWrapper<UserSecret>().eq(UserSecret::getUsername, name)
+                        .eq(UserSecret::getItemId, item.getId())) > 0;
 
         long viewCount = (item.getViewCount() == null ? 0L : item.getViewCount()) + 1;
         contentItemMapper.update(null, new UpdateWrapper<ContentItem>()
                 .setSql("view_count = view_count + 1")
                 .eq("id", item.getId()));
 
-        if (fee > 0) {
-            UserSecret record = new UserSecret();
-            record.setUsername(name);
-            record.setItemId(item.getId());
-            record.setCost(fee);
-            record.setTitle(item.getTitle());
-            record.setGrade(item.getGrade());
-            record.setIcon(item.getIcon());
-            userSecretMapper.insert(record);
-        }
+        // 每次探秘都落一条支出账（成本快照 = 引路费），供贡献值账本扣减
+        UserSecret record = new UserSecret();
+        record.setUsername(name);
+        record.setItemId(item.getId());
+        record.setCost(ROAM_FEE);
+        record.setTitle(item.getTitle());
+        record.setGrade(item.getGrade());
+        record.setIcon(item.getIcon());
+        userSecretMapper.insert(record);
 
-        List<Map<String, Object>> rewards = rollRewards(name, item, firstEntry);
+        List<Map<String, Object>> rewards = rollRoamRewards(name, item);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("id", item.getId());
@@ -187,7 +186,8 @@ public class SecretService {
         data.put("icon", item.getIcon());
         data.put("viewCount", viewCount);
         data.put("encounter", sectService.encounterFor(item));
-        data.put("fee", fee);
+        data.put("fee", ROAM_FEE);
+        data.put("revisited", revisited);
         data.put("rewards", rewards);
         return data;
     }
@@ -219,6 +219,7 @@ public class SecretService {
     /**
      * 储物空间（洞府联动）：历次探索获得的法宝 / 上古残篇 / 天赋神通，
      * 时间倒序，最多回看 100 件。储物袋无上限，获得即永久收录。
+     * 坊市回购售出的（status=1）不再计入，卖掉的宝贝自然从储物袋里消失。
      */
     public List<SecretReward> storage(String username) {
         String name = requireUsername(username);
@@ -226,13 +227,14 @@ public class SecretService {
             List<SecretReward> list = secretRewardMapper.selectList(
                     new LambdaQueryWrapper<SecretReward>()
                             .eq(SecretReward::getUsername, name)
+                            .eq(SecretReward::getStatus, 0)
                             .in(SecretReward::getRewardType, "artifact", "fragment", "divine_ability")
                             .orderByDesc(SecretReward::getCreateTime)
                             .orderByDesc(SecretReward::getId)
                             .last("LIMIT 100"));
             return list == null ? new ArrayList<>() : list;
         } catch (Exception e) {
-            // 储物阵法尚未开辟（secret_reward 表未建）时兜底为空，不让洞府挂掉
+            // 储物阵法尚未开辟（secret_reward 表 / status 列未建）时兜底为空，不让洞府挂掉
             return new ArrayList<>();
         }
     }
@@ -269,7 +271,7 @@ public class SecretService {
     }
 
     // ==========================================================
-    // 二、探索奖励（按秘境类型 × 品阶掷骰，奖励不固定）
+    // 二、探索奖励（按秘境类型 × 品阶掷骰，奖励不固定；秘境永不产贡献值）
     // ==========================================================
 
     /** 法宝名池 */
@@ -302,17 +304,13 @@ public class SecretService {
         String realmType = realmTypeOf(realm);
         int mult = gradeMultiplier(realm.getGrade());
 
-        // 1. 基础 loot：灵石 / 贡献值（首入必得其一，重游 30% 也给）
+        // 1. 基础 loot：灵石（首入必得，重游 30% 也给；**秘境不产贡献值**）
         if (firstEntry || rnd.nextInt(100) < 30) {
-            boolean stones = rnd.nextInt(100) < 60;
-            long amount = stones ? rnd.nextLong(50, 301) * mult : rnd.nextLong(30, 151) * mult;
-            grantCurrency(username, realm, stones ? "stones" : "contribution", amount,
-                    stones ? "stones" : "contribution");
-            rewards.add(reward("stones", stones ? "灵石" : "贡献值",
-                    "stones", stones ? "灵石" : "贡献值",
+            long amount = rnd.nextLong(50, 301) * mult;
+            grantCurrency(username, realm, "stones", amount, "stones");
+            rewards.add(reward("stones", "灵石", "stones", "灵石",
                     mult >= 3 ? "rare" : "common", amount,
-                    stones ? "你在秘境深处摸出 " + amount + " 块灵石，成色不错。"
-                           : "秘境遗落的供奉盒里有 " + amount + " 贡献值，宗门认账。"));
+                    "你在秘境深处摸出 " + amount + " 块灵石，成色不错。"));
         }
 
         // 2. 修为收获（55%）
@@ -345,32 +343,72 @@ public class SecretService {
         }
 
         if (rewards.isEmpty()) {
-            // 兜底：绝不让弟子空手而归
+            // 兜底：绝不让弟子空手而归（只补灵石，不补贡献值）
             long amount = rnd.nextLong(20, 81) * mult;
-            grantCurrency(username, realm, "contribution", amount, "contribution");
-            rewards.add(reward("contribution", "贡献值", "contribution", "贡献值",
-                    "common", amount, "秘境只遗下一点残渣，但也值 " + amount + " 贡献值。"));
+            grantCurrency(username, realm, "stones", amount, "stones");
+            rewards.add(reward("stones", "灵石", "stones", "灵石",
+                    "common", amount, "秘境只遗下一点残渣，但也值 " + amount + " 块灵石。"));
         }
         return rewards;
     }
 
     /**
-     * 低端「无主之境」的寒酸收获：只掉零碎灵石/贡献值，偶尔一点残渣修为，
-     * 没有法宝、没有功法、没有奇遇——门槛都没设，谁会留宝贝？
+     * 随机探秘的寒酸口径掷骰（**永不产出贡献值**）：
+     *   45% 颗粒无收 / 30% 少量灵石 / 15% 少量修为 / 9% 普通奇遇 / 1% 传说机缘。
+     * 相比指定破界（首入必得 + 高概率奇遇），随机探秘常常空手而归。
+     */
+    private List<Map<String, Object>> rollRoamRewards(String username, ContentItem realm) {
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+        int mult = gradeMultiplier(realm.getGrade());
+        int r = rnd.nextInt(100);
+
+        if (r < 45) {
+            // 天机只是引路，造化全看个人：颗粒无收
+            return new ArrayList<>();
+        }
+
+        List<Map<String, Object>> rewards = new ArrayList<>();
+        if (r < 75) { // 30%：少量灵石
+            long amount = rnd.nextLong(10, 61) * mult;
+            grantCurrency(username, realm, "stones", amount, "stones");
+            rewards.add(reward("stones", "灵石", "stones", "灵石",
+                    "common", amount, "临出秘境时在石缝里抠出 " + amount + " 块灵石，算没白跑。"));
+        } else if (r < 90) { // 15%：少量修为
+            long amount = rnd.nextLong(50, 201) * mult;
+            grantCultivation(username, realm, amount,
+                    "秘境边缘游离的灵气驳杂，你吞吐数个周天只得修为 +" + amount + "。");
+            rewards.add(reward("cultivation", "修为", "cultivation", "修为",
+                    "common", amount, "就着秘境余气吐纳，修为 +" + amount + "。"));
+        } else if (r < 99) { // 9%：普通奇遇（法宝 / 残篇 / 神通 / 功法）
+            rewards.addAll(rollEncounter(username, realm, realmTypeOf(realm), mult));
+        } else { // 1%：传说机缘（完整功法或传说法宝）
+            if (rnd.nextBoolean()) {
+                Map<String, Object> tech = grantTechnique(username, realm, "legendary");
+                if (tech != null) {
+                    rewards.add(tech);
+                }
+            } else {
+                String artifact = ARTIFACT_LEGEND[rnd.nextInt(ARTIFACT_LEGEND.length)];
+                rewards.add(saveReward(username, realm, "artifact", artifact, "legendary", 0L,
+                        "机缘天降！" + artifact + "自鸣认主——天机引路费花得值了。"));
+            }
+        }
+        return rewards;
+    }
+
+    /**
+     * 低端「无主之境」的寒酸收获：只掉零碎灵石，偶尔一点残渣修为，
+     * 没有贡献值、没有法宝、没有功法、没有奇遇——门槛都没设，谁会留宝贝？
      */
     private List<Map<String, Object>> rollTrashLoot(String username, ContentItem realm, boolean firstEntry) {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
         List<Map<String, Object>> rewards = new ArrayList<>();
 
-        boolean stones = rnd.nextBoolean();
         long amount = rnd.nextLong(5, 26);
-        grantCurrency(username, realm, stones ? "stones" : "contribution", amount,
-                stones ? "stones" : "contribution");
-        rewards.add(reward("stones", stones ? "灵石" : "贡献值",
-                stones ? "stones" : "contribution", stones ? "灵石" : "贡献值",
+        grantCurrency(username, realm, "stones", amount, "stones");
+        rewards.add(reward("stones", "灵石", "stones", "灵石",
                 "common", amount,
-                stones ? "此境无人看守，你只翻出 " + amount + " 块下品灵石，渣渣。"
-                       : "墙角摸出 " + amount + " 贡献值的供奉残渣，宗门勉强认账。"));
+                "此境无人看守，你只翻出 " + amount + " 块下品灵石，渣渣。"));
 
         if (firstEntry && rnd.nextInt(100) < 30) {
             long amount2 = rnd.nextLong(30, 101);

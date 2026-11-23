@@ -513,6 +513,7 @@ CREATE TABLE `secret_reward`  (
   `reward_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '奖励名称快照',
   `rarity` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'common' COMMENT '稀有度：common/rare/epic/legendary',
   `amount` bigint NOT NULL DEFAULT 0 COMMENT '数值奖励量（灵石/贡献值/修为），奇遇类为 0',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '归属状态：0 持有 / 1 已售出 / 2 寄售中',
   `detail` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '奖励描述（奇遇文案）',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '入账时间',
   PRIMARY KEY (`id`) USING BTREE,
@@ -523,84 +524,137 @@ CREATE TABLE `secret_reward`  (
 -- ----------------------------
 -- Records of secret_reward
 -- ----------------------------
-INSERT INTO `secret_reward` VALUES (1, 'ywh', 62, 'contribution', '贡献值', 'common', 164, NULL, '2026-11-20 16:30:35');
-INSERT INTO `secret_reward` VALUES (2, 'ywh', 66, 'stones', '灵石', 'common', 792, NULL, '2026-11-20 16:30:50');
-INSERT INTO `secret_reward` VALUES (3, 'ywh', 66, 'cultivation', '修为', 'common', 6510, '幻境中你直面本心魔障，道心通明！桎梏寸寸崩解，修为暴涨 +6510。', '2026-11-20 16:30:50');
-INSERT INTO `secret_reward` VALUES (4, 'ywh', 194, 'contribution', '贡献值', 'common', 102, NULL, '2026-11-20 16:30:55');
-INSERT INTO `secret_reward` VALUES (5, 'ywh', 194, 'cultivation', '修为', 'common', 510, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +510。', '2026-11-20 16:30:55');
-INSERT INTO `secret_reward` VALUES (6, 'ywh', 50, 'stones', '灵石', 'common', 382, NULL, '2026-11-20 16:30:57');
-INSERT INTO `secret_reward` VALUES (7, 'ywh', 50, 'cultivation', '修为', 'common', 1070, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1070。', '2026-11-20 16:30:57');
-INSERT INTO `secret_reward` VALUES (8, 'ywh', 50, 'artifact', '赤炎珠', 'uncommon', 0, '尘封洞府中，赤炎珠静静浮空。你伸手一握，器灵哼了一声，算是认了你。', '2026-11-20 16:30:57');
-INSERT INTO `secret_reward` VALUES (9, 'ywh', 188, 'stones', '灵石', 'common', 651, NULL, '2026-11-20 16:31:02');
-INSERT INTO `secret_reward` VALUES (10, 'ywh', 188, 'cultivation', '修为', 'common', 1428, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1428。', '2026-11-20 16:31:02');
-INSERT INTO `secret_reward` VALUES (11, 'ywh', 188, 'cultivation', '修为', 'common', 1407, '幻境轮回百世，醒来时你多了一门天赋神通「血遁千里」，修为 +1407。', '2026-11-20 16:31:02');
-INSERT INTO `secret_reward` VALUES (12, 'ywh', 194, 'cultivation', '修为', 'common', 402, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +402。', '2026-11-20 16:31:04');
-INSERT INTO `secret_reward` VALUES (13, 'ywh', 194, 'cultivation', '修为', 'common', 1090, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +1090。', '2026-11-20 16:31:04');
-INSERT INTO `secret_reward` VALUES (14, 'ywh', 197, 'contribution', '贡献值', 'common', 266, NULL, '2026-11-20 16:31:08');
-INSERT INTO `secret_reward` VALUES (15, 'ywh', 197, 'technique', '劫火焚心经', 'rare', 0, '秘境深处得授功法「劫火焚心经」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:31:08');
-INSERT INTO `secret_reward` VALUES (16, 'ywh', 183, 'stones', '灵石', 'common', 1172, NULL, '2026-11-20 16:31:09');
-INSERT INTO `secret_reward` VALUES (17, 'ywh', 183, 'artifact', '枯荣笛', 'uncommon', 0, '尘封洞府中，枯荣笛静静浮空。你伸手一握，器灵哼了一声，算是认了你。', '2026-11-20 16:31:09');
-INSERT INTO `secret_reward` VALUES (18, 'ywh', 57, 'contribution', '贡献值', 'common', 402, NULL, '2026-11-20 16:31:13');
-INSERT INTO `secret_reward` VALUES (19, 'ywh', 57, 'artifact', '枯荣笛', 'uncommon', 0, '尘封洞府中，枯荣笛静静浮空。你伸手一握，器灵哼了一声，算是认了你。', '2026-11-20 16:31:13');
-INSERT INTO `secret_reward` VALUES (20, 'ywh', 67, 'contribution', '贡献值', 'common', 238, NULL, '2026-11-20 16:31:16');
-INSERT INTO `secret_reward` VALUES (21, 'ywh', 67, 'cultivation', '修为', 'common', 1110, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1110。', '2026-11-20 16:31:16');
-INSERT INTO `secret_reward` VALUES (22, 'ywh', 67, 'technique', '春雷淬身诀', 'rare', 0, '秘境深处得授功法「春雷淬身诀」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:31:16');
-INSERT INTO `secret_reward` VALUES (23, 'ywh', 66, 'cultivation', '修为', 'common', 1635, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1635。', '2026-11-20 16:34:05');
-INSERT INTO `secret_reward` VALUES (24, 'ywh', 195, 'stones', '灵石', 'common', 856, NULL, '2026-11-20 16:34:11');
-INSERT INTO `secret_reward` VALUES (25, 'ywh', 67, 'stones', '灵石', 'common', 342, NULL, '2026-11-20 16:34:16');
-INSERT INTO `secret_reward` VALUES (26, 'ywh', 67, 'cultivation', '修为', 'common', 848, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +848。', '2026-11-20 16:34:16');
-INSERT INTO `secret_reward` VALUES (27, 'ywh', 67, 'cultivation', '修为', 'common', 924, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +924。', '2026-11-20 16:34:16');
-INSERT INTO `secret_reward` VALUES (28, 'ywh', 53, 'stones', '灵石', 'common', 204, NULL, '2026-11-20 16:34:26');
-INSERT INTO `secret_reward` VALUES (29, 'ywh', 53, 'cultivation', '修为', 'common', 1424, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +1424。', '2026-11-20 16:34:26');
-INSERT INTO `secret_reward` VALUES (30, 'ywh', 65, 'stones', '灵石', 'common', 916, NULL, '2026-11-20 16:37:12');
-INSERT INTO `secret_reward` VALUES (31, 'ywh', 65, 'cultivation', '修为', 'common', 1124, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1124。', '2026-11-20 16:37:12');
-INSERT INTO `secret_reward` VALUES (32, 'ywh', 56, 'contribution', '贡献值', 'common', 274, NULL, '2026-11-20 16:37:15');
-INSERT INTO `secret_reward` VALUES (33, 'ywh', 56, 'cultivation', '修为', 'common', 672, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +672。', '2026-11-20 16:37:15');
-INSERT INTO `secret_reward` VALUES (34, 'ywh', 49, 'contribution', '贡献值', 'common', 177, NULL, '2026-11-20 16:37:16');
-INSERT INTO `secret_reward` VALUES (35, 'ywh', 67, 'cultivation', '修为', 'common', 1090, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1090。', '2026-11-20 16:37:18');
-INSERT INTO `secret_reward` VALUES (36, 'ywh', 49, 'contribution', '贡献值', 'common', 393, NULL, '2026-11-20 16:37:20');
-INSERT INTO `secret_reward` VALUES (37, 'ywh', 52, 'contribution', '贡献值', 'common', 476, NULL, '2026-11-20 16:37:26');
-INSERT INTO `secret_reward` VALUES (38, 'ywh', 49, 'contribution', '贡献值', 'common', 192, NULL, '2026-11-20 16:37:45');
-INSERT INTO `secret_reward` VALUES (39, 'ywh', 196, 'stones', '灵石', 'common', 21, NULL, '2026-11-20 16:37:47');
-INSERT INTO `secret_reward` VALUES (40, 'ywh', 50, 'cultivation', '修为', 'common', 522, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +522。', '2026-11-20 16:37:49');
-INSERT INTO `secret_reward` VALUES (41, 'ywh', 63, 'contribution', '贡献值', 'common', 237, NULL, '2026-11-20 16:37:50');
-INSERT INTO `secret_reward` VALUES (42, 'ywh', 63, 'cultivation', '修为', 'common', 1800, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1800。', '2026-11-20 16:37:50');
-INSERT INTO `secret_reward` VALUES (43, 'ywh', 63, 'technique', '万象归心图', 'rare', 0, '秘境深处得授功法「万象归心图」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:37:50');
-INSERT INTO `secret_reward` VALUES (44, 'ywh', 46, 'contribution', '贡献值', 'common', 236, NULL, '2026-11-20 16:37:53');
-INSERT INTO `secret_reward` VALUES (45, 'ywh', 46, 'cultivation', '修为', 'common', 1408, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1408。', '2026-11-20 16:37:53');
-INSERT INTO `secret_reward` VALUES (46, 'ywh', 67, 'stones', '灵石', 'common', 300, NULL, '2026-11-20 16:37:55');
-INSERT INTO `secret_reward` VALUES (47, 'ywh', 67, 'cultivation', '修为', 'common', 992, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +992。', '2026-11-20 16:37:55');
-INSERT INTO `secret_reward` VALUES (48, 'ywh', 182, 'stones', '灵石', 'common', 382, NULL, '2026-11-20 16:37:56');
-INSERT INTO `secret_reward` VALUES (49, 'ywh', 182, 'cultivation', '修为', 'common', 976, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +976。', '2026-11-20 16:37:56');
-INSERT INTO `secret_reward` VALUES (50, 'ywh', 197, 'cultivation', '修为', 'common', 1024, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1024。', '2026-11-20 16:37:58');
-INSERT INTO `secret_reward` VALUES (51, 'ywh', 197, 'cultivation', '修为', 'common', 1450, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +1450。', '2026-11-20 16:37:58');
-INSERT INTO `secret_reward` VALUES (52, 'ywh', 198, 'stones', '灵石', 'common', 855, NULL, '2026-11-20 16:38:01');
-INSERT INTO `secret_reward` VALUES (53, 'ywh', 61, 'stones', '灵石', 'common', 657, NULL, '2026-11-20 16:38:03');
-INSERT INTO `secret_reward` VALUES (54, 'ywh', 61, 'cultivation', '修为', 'common', 966, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +966。', '2026-11-20 16:38:03');
-INSERT INTO `secret_reward` VALUES (55, 'ywh', 53, 'cultivation', '修为', 'common', 516, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +516。', '2026-11-20 16:38:05');
-INSERT INTO `secret_reward` VALUES (56, 'ywh', 181, 'stones', '灵石', 'common', 603, NULL, '2026-11-20 16:38:34');
-INSERT INTO `secret_reward` VALUES (57, 'ywh', 181, 'cultivation', '修为', 'common', 822, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +822。', '2026-11-20 16:38:34');
-INSERT INTO `secret_reward` VALUES (58, 'ywh', 194, 'stones', '灵石', 'common', 214, NULL, '2026-11-20 16:38:36');
-INSERT INTO `secret_reward` VALUES (59, 'ywh', 52, 'cultivation', '修为', 'common', 1496, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1496。', '2026-11-20 16:38:38');
-INSERT INTO `secret_reward` VALUES (60, 'ywh', 52, 'cultivation', '修为', 'common', 2632, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +2632。', '2026-11-20 16:38:38');
-INSERT INTO `secret_reward` VALUES (61, 'ywh', 68, 'stones', '灵石', 'common', 18, NULL, '2026-11-20 16:38:45');
-INSERT INTO `secret_reward` VALUES (62, 'ywh', 65, 'stones', '灵石', 'common', 880, NULL, '2026-11-20 16:40:44');
-INSERT INTO `secret_reward` VALUES (63, 'ywh', 65, 'cultivation', '修为', 'common', 4748, '幻境中你直面本心魔障，道心通明！桎梏寸寸崩解，修为暴涨 +4748。', '2026-11-20 16:40:44');
-INSERT INTO `secret_reward` VALUES (64, 'ywh', 65, 'stones', '灵石', 'common', 492, NULL, '2026-11-20 16:40:49');
-INSERT INTO `secret_reward` VALUES (65, 'ywh', 61, 'cultivation', '修为', 'common', 1185, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1185。', '2026-11-20 16:40:53');
-INSERT INTO `secret_reward` VALUES (66, 'ywh', 184, 'contribution', '贡献值', 'common', 24, NULL, '2026-11-20 16:40:55');
-INSERT INTO `secret_reward` VALUES (67, 'ywh', 188, 'contribution', '贡献值', 'common', 300, NULL, '2026-11-20 16:41:00');
-INSERT INTO `secret_reward` VALUES (68, 'ywh', 188, 'cultivation', '修为', 'common', 828, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +828。', '2026-11-20 16:41:00');
-INSERT INTO `secret_reward` VALUES (69, 'ywh', 188, 'cultivation', '修为', 'common', 1653, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +1653。', '2026-11-20 16:41:00');
-INSERT INTO `secret_reward` VALUES (70, 'ywh', 63, 'contribution', '贡献值', 'common', 126, NULL, '2026-11-20 16:41:10');
-INSERT INTO `secret_reward` VALUES (71, 'ywh', 63, 'cultivation', '修为', 'common', 1542, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1542。', '2026-11-20 16:41:10');
-INSERT INTO `secret_reward` VALUES (72, 'ywh', 55, 'stones', '灵石', 'common', 556, NULL, '2026-11-20 16:41:11');
-INSERT INTO `secret_reward` VALUES (73, 'ywh', 55, 'cultivation', '修为', 'common', 1248, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1248。', '2026-11-20 16:41:11');
-INSERT INTO `secret_reward` VALUES (74, 'ywh', 55, 'cultivation', '修为', 'common', 2128, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +2128。', '2026-11-20 16:41:11');
-INSERT INTO `secret_reward` VALUES (75, 'ywh', 61, 'contribution', '贡献值', 'common', 60, NULL, '2026-11-20 16:41:12');
-INSERT INTO `secret_reward` VALUES (76, 'ywh', 57, 'stones', '灵石', 'common', 342, NULL, '2026-11-20 16:41:14');
-INSERT INTO `secret_reward` VALUES (77, 'ywh', 57, 'cultivation', '修为', 'common', 1935, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +1935。', '2026-11-20 16:41:14');
-INSERT INTO `secret_reward` VALUES (78, 'ywh', 49, 'technique', '血煞炼骨术', 'legendary', 0, '秘境深处得授功法「血煞炼骨术」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:43:52');
+INSERT INTO `secret_reward` VALUES (1, 'ywh', 62, 'contribution', '贡献值', 'common', 164, 0, NULL, '2026-11-20 16:30:35');
+INSERT INTO `secret_reward` VALUES (2, 'ywh', 66, 'stones', '灵石', 'common', 792, 0, NULL, '2026-11-20 16:30:50');
+INSERT INTO `secret_reward` VALUES (3, 'ywh', 66, 'cultivation', '修为', 'common', 6510, 0, '幻境中你直面本心魔障，道心通明！桎梏寸寸崩解，修为暴涨 +6510。', '2026-11-20 16:30:50');
+INSERT INTO `secret_reward` VALUES (4, 'ywh', 194, 'contribution', '贡献值', 'common', 102, 0, NULL, '2026-11-20 16:30:55');
+INSERT INTO `secret_reward` VALUES (5, 'ywh', 194, 'cultivation', '修为', 'common', 510, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +510。', '2026-11-20 16:30:55');
+INSERT INTO `secret_reward` VALUES (6, 'ywh', 50, 'stones', '灵石', 'common', 382, 0, NULL, '2026-11-20 16:30:57');
+INSERT INTO `secret_reward` VALUES (7, 'ywh', 50, 'cultivation', '修为', 'common', 1070, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1070。', '2026-11-20 16:30:57');
+INSERT INTO `secret_reward` VALUES (8, 'ywh', 50, 'artifact', '赤炎珠', 'uncommon', 0, 0, '尘封洞府中，赤炎珠静静浮空。你伸手一握，器灵哼了一声，算是认了你。', '2026-11-20 16:30:57');
+INSERT INTO `secret_reward` VALUES (9, 'ywh', 188, 'stones', '灵石', 'common', 651, 0, NULL, '2026-11-20 16:31:02');
+INSERT INTO `secret_reward` VALUES (10, 'ywh', 188, 'cultivation', '修为', 'common', 1428, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1428。', '2026-11-20 16:31:02');
+INSERT INTO `secret_reward` VALUES (11, 'ywh', 188, 'cultivation', '修为', 'common', 1407, 0, '幻境轮回百世，醒来时你多了一门天赋神通「血遁千里」，修为 +1407。', '2026-11-20 16:31:02');
+INSERT INTO `secret_reward` VALUES (12, 'ywh', 194, 'cultivation', '修为', 'common', 402, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +402。', '2026-11-20 16:31:04');
+INSERT INTO `secret_reward` VALUES (13, 'ywh', 194, 'cultivation', '修为', 'common', 1090, 0, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +1090。', '2026-11-20 16:31:04');
+INSERT INTO `secret_reward` VALUES (14, 'ywh', 197, 'contribution', '贡献值', 'common', 266, 0, NULL, '2026-11-20 16:31:08');
+INSERT INTO `secret_reward` VALUES (15, 'ywh', 197, 'technique', '劫火焚心经', 'rare', 0, 0, '秘境深处得授功法「劫火焚心经」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:31:08');
+INSERT INTO `secret_reward` VALUES (16, 'ywh', 183, 'stones', '灵石', 'common', 1172, 0, NULL, '2026-11-20 16:31:09');
+INSERT INTO `secret_reward` VALUES (17, 'ywh', 183, 'artifact', '枯荣笛', 'uncommon', 0, 0, '尘封洞府中，枯荣笛静静浮空。你伸手一握，器灵哼了一声，算是认了你。', '2026-11-20 16:31:09');
+INSERT INTO `secret_reward` VALUES (18, 'ywh', 57, 'contribution', '贡献值', 'common', 402, 0, NULL, '2026-11-20 16:31:13');
+INSERT INTO `secret_reward` VALUES (19, 'ywh', 57, 'artifact', '枯荣笛', 'uncommon', 0, 0, '尘封洞府中，枯荣笛静静浮空。你伸手一握，器灵哼了一声，算是认了你。', '2026-11-20 16:31:13');
+INSERT INTO `secret_reward` VALUES (20, 'ywh', 67, 'contribution', '贡献值', 'common', 238, 0, NULL, '2026-11-20 16:31:16');
+INSERT INTO `secret_reward` VALUES (21, 'ywh', 67, 'cultivation', '修为', 'common', 1110, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1110。', '2026-11-20 16:31:16');
+INSERT INTO `secret_reward` VALUES (22, 'ywh', 67, 'technique', '春雷淬身诀', 'rare', 0, 0, '秘境深处得授功法「春雷淬身诀」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:31:16');
+INSERT INTO `secret_reward` VALUES (23, 'ywh', 66, 'cultivation', '修为', 'common', 1635, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1635。', '2026-11-20 16:34:05');
+INSERT INTO `secret_reward` VALUES (24, 'ywh', 195, 'stones', '灵石', 'common', 856, 0, NULL, '2026-11-20 16:34:11');
+INSERT INTO `secret_reward` VALUES (25, 'ywh', 67, 'stones', '灵石', 'common', 342, 0, NULL, '2026-11-20 16:34:16');
+INSERT INTO `secret_reward` VALUES (26, 'ywh', 67, 'cultivation', '修为', 'common', 848, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +848。', '2026-11-20 16:34:16');
+INSERT INTO `secret_reward` VALUES (27, 'ywh', 67, 'cultivation', '修为', 'common', 924, 0, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +924。', '2026-11-20 16:34:16');
+INSERT INTO `secret_reward` VALUES (28, 'ywh', 53, 'stones', '灵石', 'common', 204, 0, NULL, '2026-11-20 16:34:26');
+INSERT INTO `secret_reward` VALUES (29, 'ywh', 53, 'cultivation', '修为', 'common', 1424, 0, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +1424。', '2026-11-20 16:34:26');
+INSERT INTO `secret_reward` VALUES (30, 'ywh', 65, 'stones', '灵石', 'common', 916, 0, NULL, '2026-11-20 16:37:12');
+INSERT INTO `secret_reward` VALUES (31, 'ywh', 65, 'cultivation', '修为', 'common', 1124, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1124。', '2026-11-20 16:37:12');
+INSERT INTO `secret_reward` VALUES (32, 'ywh', 56, 'contribution', '贡献值', 'common', 274, 0, NULL, '2026-11-20 16:37:15');
+INSERT INTO `secret_reward` VALUES (33, 'ywh', 56, 'cultivation', '修为', 'common', 672, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +672。', '2026-11-20 16:37:15');
+INSERT INTO `secret_reward` VALUES (34, 'ywh', 49, 'contribution', '贡献值', 'common', 177, 0, NULL, '2026-11-20 16:37:16');
+INSERT INTO `secret_reward` VALUES (35, 'ywh', 67, 'cultivation', '修为', 'common', 1090, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1090。', '2026-11-20 16:37:18');
+INSERT INTO `secret_reward` VALUES (36, 'ywh', 49, 'contribution', '贡献值', 'common', 393, 0, NULL, '2026-11-20 16:37:20');
+INSERT INTO `secret_reward` VALUES (37, 'ywh', 52, 'contribution', '贡献值', 'common', 476, 0, NULL, '2026-11-20 16:37:26');
+INSERT INTO `secret_reward` VALUES (38, 'ywh', 49, 'contribution', '贡献值', 'common', 192, 0, NULL, '2026-11-20 16:37:45');
+INSERT INTO `secret_reward` VALUES (39, 'ywh', 196, 'stones', '灵石', 'common', 21, 0, NULL, '2026-11-20 16:37:47');
+INSERT INTO `secret_reward` VALUES (40, 'ywh', 50, 'cultivation', '修为', 'common', 522, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +522。', '2026-11-20 16:37:49');
+INSERT INTO `secret_reward` VALUES (41, 'ywh', 63, 'contribution', '贡献值', 'common', 237, 0, NULL, '2026-11-20 16:37:50');
+INSERT INTO `secret_reward` VALUES (42, 'ywh', 63, 'cultivation', '修为', 'common', 1800, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1800。', '2026-11-20 16:37:50');
+INSERT INTO `secret_reward` VALUES (43, 'ywh', 63, 'technique', '万象归心图', 'rare', 0, 0, '秘境深处得授功法「万象归心图」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:37:50');
+INSERT INTO `secret_reward` VALUES (44, 'ywh', 46, 'contribution', '贡献值', 'common', 236, 0, NULL, '2026-11-20 16:37:53');
+INSERT INTO `secret_reward` VALUES (45, 'ywh', 46, 'cultivation', '修为', 'common', 1408, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1408。', '2026-11-20 16:37:53');
+INSERT INTO `secret_reward` VALUES (46, 'ywh', 67, 'stones', '灵石', 'common', 300, 0, NULL, '2026-11-20 16:37:55');
+INSERT INTO `secret_reward` VALUES (47, 'ywh', 67, 'cultivation', '修为', 'common', 992, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +992。', '2026-11-20 16:37:55');
+INSERT INTO `secret_reward` VALUES (48, 'ywh', 182, 'stones', '灵石', 'common', 382, 0, NULL, '2026-11-20 16:37:56');
+INSERT INTO `secret_reward` VALUES (49, 'ywh', 182, 'cultivation', '修为', 'common', 976, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +976。', '2026-11-20 16:37:56');
+INSERT INTO `secret_reward` VALUES (50, 'ywh', 197, 'cultivation', '修为', 'common', 1024, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1024。', '2026-11-20 16:37:58');
+INSERT INTO `secret_reward` VALUES (51, 'ywh', 197, 'cultivation', '修为', 'common', 1450, 0, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +1450。', '2026-11-20 16:37:58');
+INSERT INTO `secret_reward` VALUES (52, 'ywh', 198, 'stones', '灵石', 'common', 855, 0, NULL, '2026-11-20 16:38:01');
+INSERT INTO `secret_reward` VALUES (53, 'ywh', 61, 'stones', '灵石', 'common', 657, 0, NULL, '2026-11-20 16:38:03');
+INSERT INTO `secret_reward` VALUES (54, 'ywh', 61, 'cultivation', '修为', 'common', 966, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +966。', '2026-11-20 16:38:03');
+INSERT INTO `secret_reward` VALUES (55, 'ywh', 53, 'cultivation', '修为', 'common', 516, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +516。', '2026-11-20 16:38:05');
+INSERT INTO `secret_reward` VALUES (56, 'ywh', 181, 'stones', '灵石', 'common', 603, 0, NULL, '2026-11-20 16:38:34');
+INSERT INTO `secret_reward` VALUES (57, 'ywh', 181, 'cultivation', '修为', 'common', 822, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +822。', '2026-11-20 16:38:34');
+INSERT INTO `secret_reward` VALUES (58, 'ywh', 194, 'stones', '灵石', 'common', 214, 0, NULL, '2026-11-20 16:38:36');
+INSERT INTO `secret_reward` VALUES (59, 'ywh', 52, 'cultivation', '修为', 'common', 1496, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1496。', '2026-11-20 16:38:38');
+INSERT INTO `secret_reward` VALUES (60, 'ywh', 52, 'cultivation', '修为', 'common', 2632, 0, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +2632。', '2026-11-20 16:38:38');
+INSERT INTO `secret_reward` VALUES (61, 'ywh', 68, 'stones', '灵石', 'common', 18, 0, NULL, '2026-11-20 16:38:45');
+INSERT INTO `secret_reward` VALUES (62, 'ywh', 65, 'stones', '灵石', 'common', 880, 0, NULL, '2026-11-20 16:40:44');
+INSERT INTO `secret_reward` VALUES (63, 'ywh', 65, 'cultivation', '修为', 'common', 4748, 0, '幻境中你直面本心魔障，道心通明！桎梏寸寸崩解，修为暴涨 +4748。', '2026-11-20 16:40:44');
+INSERT INTO `secret_reward` VALUES (64, 'ywh', 65, 'stones', '灵石', 'common', 492, 0, NULL, '2026-11-20 16:40:49');
+INSERT INTO `secret_reward` VALUES (65, 'ywh', 61, 'cultivation', '修为', 'common', 1185, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1185。', '2026-11-20 16:40:53');
+INSERT INTO `secret_reward` VALUES (66, 'ywh', 184, 'contribution', '贡献值', 'common', 24, 0, NULL, '2026-11-20 16:40:55');
+INSERT INTO `secret_reward` VALUES (67, 'ywh', 188, 'contribution', '贡献值', 'common', 300, 0, NULL, '2026-11-20 16:41:00');
+INSERT INTO `secret_reward` VALUES (68, 'ywh', 188, 'cultivation', '修为', 'common', 828, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +828。', '2026-11-20 16:41:00');
+INSERT INTO `secret_reward` VALUES (69, 'ywh', 188, 'cultivation', '修为', 'common', 1653, 0, '幻境轮回百世，醒来时你多了一门天赋神通「阴风耳」，修为 +1653。', '2026-11-20 16:41:00');
+INSERT INTO `secret_reward` VALUES (70, 'ywh', 63, 'contribution', '贡献值', 'common', 126, 0, NULL, '2026-11-20 16:41:10');
+INSERT INTO `secret_reward` VALUES (71, 'ywh', 63, 'cultivation', '修为', 'common', 1542, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1542。', '2026-11-20 16:41:10');
+INSERT INTO `secret_reward` VALUES (72, 'ywh', 55, 'stones', '灵石', 'common', 556, 0, NULL, '2026-11-20 16:41:11');
+INSERT INTO `secret_reward` VALUES (73, 'ywh', 55, 'cultivation', '修为', 'common', 1248, 0, '秘境魔气驳杂却精纯，你就地吞吐数个周天，修为 +1248。', '2026-11-20 16:41:11');
+INSERT INTO `secret_reward` VALUES (74, 'ywh', 55, 'cultivation', '修为', 'common', 2128, 0, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +2128。', '2026-11-20 16:41:11');
+INSERT INTO `secret_reward` VALUES (75, 'ywh', 61, 'contribution', '贡献值', 'common', 60, 0, NULL, '2026-11-20 16:41:12');
+INSERT INTO `secret_reward` VALUES (76, 'ywh', 57, 'stones', '灵石', 'common', 342, 0, NULL, '2026-11-20 16:41:14');
+INSERT INTO `secret_reward` VALUES (77, 'ywh', 57, 'cultivation', '修为', 'common', 1935, 0, '你拾得半卷上古残篇，字迹斑驳却隐有大道之音，参悟片刻修为 +1935。', '2026-11-20 16:41:14');
+INSERT INTO `secret_reward` VALUES (78, 'ywh', 49, 'technique', '血煞炼骨术', 'legendary', 0, 0, '秘境深处得授功法「血煞炼骨术」，已免贡收录洞府，可直接参悟温养。', '2026-11-20 16:43:52');
+
+-- ----------------------------
+-- Table structure for market_item
+-- ----------------------------
+DROP TABLE IF EXISTS `market_item`;
+CREATE TABLE `market_item`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `seller` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '摊主（NPC 名或用户名）',
+  `seller_type` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'npc' COMMENT '摊主类型：npc / user',
+  `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '货品名',
+  `description` varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '货品介绍（摊主吆喝）',
+  `item_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '类型：artifact 法宝 / technique 功法 / divine_ability 神通 / pill 丹药',
+  `grade` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '品阶：黄阶/玄阶/地阶/天阶',
+  `rarity` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'common' COMMENT '稀有度：common/uncommon/rare/epic/legendary',
+  `icon` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '展示图标',
+  `reward_id` bigint NULL DEFAULT NULL COMMENT '玩家寄售关联 secret_reward.id（NPC 货为 NULL）',
+  `price` bigint NOT NULL DEFAULT 0 COMMENT '售价（灵石）',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '状态：0 在售 / 1 已售 / 2 已撤单',
+  `buyer` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '买主（成交后回填）',
+  `buy_time` datetime NULL DEFAULT NULL COMMENT '成交时间',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上架时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_mi_status`(`status` ASC) USING BTREE,
+  INDEX `idx_mi_type`(`item_type` ASC) USING BTREE,
+  INDEX `idx_mi_seller`(`seller` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '坊市·在售货品' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of market_item（初始种子由 ensure_db.sql 第 13.4 节插入，此处不重复）
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for market_order
+-- ----------------------------
+DROP TABLE IF EXISTS `market_order`;
+CREATE TABLE `market_order`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '交易人',
+  `trade_type` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '方向：buy 购入 / sell 卖出',
+  `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '货品名快照',
+  `item_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '货品类型快照',
+  `rarity` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '稀有度快照',
+  `price` bigint NOT NULL DEFAULT 0 COMMENT '成交价（灵石，买入为支出、卖出为所得）',
+  `counterparty` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '对手方（NPC 摊主）',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '成交时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_mo_user`(`username` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '坊市·交易手札' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of market_order
+-- ----------------------------
+
 
 -- ----------------------------
 -- Table structure for sect_member

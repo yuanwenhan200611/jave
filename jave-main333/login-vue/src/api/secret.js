@@ -3,7 +3,8 @@
  *
  * 贡献值经济闭环（与功法阁共用同一本账）：
  *   任务阁交差赚贡献值 → 功法阁参悟 / 秘境破界花贡献值
- *   破界进入按秘境品阶收门票；随机探秘收固定「天机引路费」20
+ *   破界进入按秘境品阶收门票（每次照收，无免费重游）；
+ *   随机探秘收固定「天机引路费」200，每次必收；探索永不产出贡献值
  */
 
 async function request(url, { method = 'GET', body } = {}) {
@@ -37,12 +38,12 @@ export function fetchSecretStatus(username) {
   return request(`/api/secret/status?username=${encodeURIComponent(username)}`)
 }
 
-/** 破界进入指定秘境（后端校验贡献值余额与重复进入） */
+/** 破界进入指定秘境（门票每次照收，后端校验贡献值余额） */
 export function enterSecret(username, itemId) {
   return request('/api/secret/enter', { method: 'POST', body: { username, itemId } })
 }
 
-/** 随机探秘（天机引路费 20 贡献值，后端校验余额） */
+/** 随机探秘（天机引路费 200 贡献值，每次必收，后端校验余额） */
 export function roamSecret(username) {
   return request('/api/secret/roam', { method: 'POST', body: { username } })
 }

@@ -43,6 +43,9 @@ public class SecretReward {
     /** 数值奖励量（灵石 / 贡献值 / 修为），奇遇类为 0 */
     private Long amount;
 
+    /** 归属状态：0 持有 / 1 已售出（坊市回购后从储物空间消失） */
+    private Integer status;
+
     /** 奖励描述（奇遇文案） */
     private String detail;
 

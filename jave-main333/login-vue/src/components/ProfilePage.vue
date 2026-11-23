@@ -81,7 +81,7 @@
         <div class="stat">
           <b>{{ stats.stonesAvailable ?? 0 }}<i class="stat-sub">累计 {{ stats.stonesTotal || 0 }} · 修炼耗 {{ stats.stonesSpent || 0 }}</i></b>
           <span>可用灵石</span>
-          <small class="stat-dim">血丹与魔功的口粮</small>
+          <small class="stat-dim">魔功血丹与坊市买卖通用</small>
         </div>
         <div class="stat">
           <b>{{ stats.cultivation || 0 }}<i class="stat-sub">修炼 {{ stats.cultivationPractice || 0 }} 次</i></b>
@@ -97,6 +97,11 @@
           <b>{{ stats.postCount || 0 }}<i v-if="stats.likeCount" class="stat-sub">♡ {{ stats.likeCount }}</i></b>
           <span>血辩之帖</span>
           <small class="stat-link" @click="loadTab('posts')">看我的帖 →</small>
+        </div>
+        <div class="stat">
+          <b>{{ stats.marketTradeCount || 0 }}<i class="stat-sub">买耗 {{ stats.marketSpent || 0 }} · 卖得 {{ stats.marketEarned || 0 }}</i></b>
+          <span>坊市交易</span>
+          <small class="stat-link" @click="go('market')">去坊市 →</small>
         </div>
       </section>
 
@@ -238,7 +243,7 @@
             <li v-for="s in mySkills" :key="s.id" class="search-row skill-row">
               <span class="quest-icon">{{ s.icon || '📜' }}</span>
               <span class="kw">{{ s.title }}<small v-if="s.grade" class="diff-tag">{{ s.grade }}</small></span>
-              <span class="hit">参悟耗贡献值 {{ s.cost }}</span>
+              <span class="hit">{{ s.cost > 0 ? `参悟耗贡献值 ${s.cost}` : '秘境 / 坊市所得' }}</span>
               <span class="time">{{ fmtTime(s.createTime) }}</span>
             </li>
           </ul>
@@ -277,7 +282,8 @@ const stats = ref({
   postCount: 0, likeCount: 0,
   questActive: 0, questDone: 0, contributionTotal: 0, stonesTotal: 0,
   skillSpent: 0, secretSpent: 0, contributionAvailable: 0,
-  cultivation: 0, cultivationPractice: 0, stonesSpent: 0, stonesAvailable: 0
+  cultivation: 0, cultivationPractice: 0, stonesSpent: 0, stonesAvailable: 0,
+  marketTradeCount: 0, marketSpent: 0, marketEarned: 0
 })
 
 const editing = ref(false)

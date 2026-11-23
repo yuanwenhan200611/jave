@@ -14,7 +14,9 @@ import java.util.Map;
  *
  *   GET /api/sect/rank      宗门榜（战力降序）
  *   GET /api/sect/halls     各堂口人数统计
- *   GET /api/sect/explore   秘境探索（随机秘境 + 奇遇文案，浏览量 +1）
+ *
+ * 注：旧的免费「/api/sect/explore」已下线——探索秘境一律走
+ * /api/secret/roam（天机引路费 200，每次必收），不存在不收费的探索口子。
  */
 @RestController
 @RequestMapping("/api/sect")
@@ -33,15 +35,5 @@ public class SectController {
     @GetMapping("/halls")
     public Result<Map<String, Long>> halls() {
         return Result.ok(sectService.hallStats());
-    }
-
-    /** 秘境探索 */
-    @GetMapping("/explore")
-    public Result<Map<String, Object>> explore() {
-        try {
-            return Result.ok(sectService.explore());
-        } catch (IllegalArgumentException e) {
-            return Result.error(e.getMessage());
-        }
     }
 }

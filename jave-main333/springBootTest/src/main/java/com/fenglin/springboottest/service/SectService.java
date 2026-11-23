@@ -1,7 +1,6 @@
 package com.fenglin.springboottest.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fenglin.springboottest.entity.Category;
 import com.fenglin.springboottest.entity.ContentItem;
 import com.fenglin.springboottest.entity.SectMember;
@@ -66,41 +65,9 @@ public class SectService {
     }
 
     // ==========================================================
-    // 二、秘境探索
+    // 二、秘境支持（pickSecretItem / encounterFor 供 SecretService 扣费探索复用；
+    //     免费的 explore 已下线——探索秘境一律走 SecretService.roam，必收引路费）
     // ==========================================================
-
-    /**
-     * 秘境探索：从「秘境」顶级分类的全部子孙分类中随机抽一个秘境条目，
-     * 浏览量 +1，并附一段随机奇遇文案。
-     */
-    public Map<String, Object> explore() {
-        ContentItem item = pickSecretItem();
-        if (item == null) {
-            throw new IllegalArgumentException("秘境尚未收录任何洞天");
-        }
-
-        // 浏览量 +1（SQL 自增防并发丢失）
-        contentItemMapper.update(null, new UpdateWrapper<ContentItem>()
-                .setSql("view_count = view_count + 1")
-                .eq("id", item.getId()));
-
-        Map<Long, String> nameMap = new HashMap<>();
-        for (Category c : categoryMapper.selectList(null)) {
-            nameMap.put(c.getId(), c.getName());
-        }
-        String catName = nameMap.getOrDefault(item.getCategoryId(), "未分类");
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("id", item.getId());
-        data.put("title", item.getTitle());
-        data.put("description", item.getDescription());
-        data.put("grade", item.getGrade());
-        data.put("icon", item.getIcon());
-        data.put("categoryName", catName);
-        data.put("viewCount", (item.getViewCount() == null ? 0L : item.getViewCount()) + 1);
-        data.put("encounter", encounterFor(item));
-        return data;
-    }
 
     /**
      * 随机挑选一个上架秘境条目（供随机探秘/扣费探索复用）。

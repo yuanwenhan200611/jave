@@ -33,7 +33,5 @@ export function fetchHallStats() {
   return request('/api/sect/halls')
 }
 
-/** 秘境探索：随机秘境 + 奇遇文案（后端同时浏览量 +1） */
-export function fetchExplore() {
-  return request('/api/sect/explore')
-}
+/* 注：旧的免费探索接口 fetchExplore（/api/sect/explore）已随免费秘境探索一并下线，
+   探索秘境统一走 api/secret.js 的 roamSecret（天机引路费 200，每次必收）。 */

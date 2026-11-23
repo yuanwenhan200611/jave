@@ -32,11 +32,13 @@ jave-main/
 
 ## 关键事实（必记）
 - **前端端口 5173**，**后端端口 8081**。前端 dev 下 `/api` 代理到 8081。
-- **前端未引入 vue-router**：`App.vue` 用 `view` 状态机切换 `'login' | 'register' | 'home' | 'secret' | 'skill' | 'rank' | 'forum'`，登录成功后进首页，顶部导航（共享组件 `src/components/SectNav.vue`）在五个宗门页面间切换。
+- **前端未引入 vue-router**：`App.vue` 用 `view` 状态机切换 `'login' | 'register' | 'home' | 'secret' | 'skill' | 'rank' | 'forum'`，登录成功后进首页，顶部导航（共享组件 `src/components/SectNav.vue`）在宗门各页面间切换。
+  现有视图：home / secret / skill / cultivation / quest / market / rank / forum / profile（SECT_VIEWS 同步维护）。
   → 新增页面时继续用 `view` 状态机，或届时再引入 vue-router（需 `npm i vue-router`）。
 - **宗门四堂（2026-11-09 已上线）**：
   - 功法阁 `SkillPage.vue`：复用 /api/home/search 按功法分类检索，分堂 tab = 功法的二级分类；
-  - 秘境 `SecretPage.vue`：「随机探秘」走 GET /api/sect/explore（随机秘境 + 奇遇文案，浏览量+1）；
+  - 秘境 `SecretPage.vue`：「随机探秘」走 POST /api/secret/roam（天机引路费 200 贡献值，每次必收；旧的免费 /api/sect/explore 已下线）；
+    随机探秘奖励走寒酸口径（45% 空手而归），秘境永不产出贡献值；指定秘境破界门票每次照收，无「已开辟免费重游」；
   - 宗门榜 `RankPage.vue`：GET /api/sect/rank + /api/sect/halls（sect_member 表，战力降序，前 3 名特殊高亮）；
   - 血辩台 `ForumPage.vue`（原论道，2026-11-18 魔宗化改造）：GET /api/forum/posts（username 可选，返回 incensedIds/counteredIds）
     + POST /api/forum/posts（开坛讲道：20 灵石设坛，修为 +60~150，60s 调息）
@@ -51,6 +53,18 @@ jave-main/
   流水存 `cultivation_log`（兼作冷却判定）。
   经济闭环：任务阁赚灵石/贡献 → 魔功殿花灵石/贡献换修为；洞府 contributionAvailable 已扣魔功殿消耗。
   法门概率/收益/冷却全部硬编码在 CultivationService 的 METHODS/rollOutcome/rollDelta，要调数值只改这一个文件。
+- **坊市·交易市场（2026-11-23 已上线）** `MarketPage.vue`：魔宗风格买卖页（灵石经济第三极）。
+  - GET /api/market/list?username=&category= → 灵石余额 + 在售货品 + 分类角标 + 储物空间可寄售藏品（含估价）
+  - POST /api/market/buy { username, itemId } → 扣灵石；法宝/残篇/神通入储物空间，功法免贡收录（user_skill, cost=0），丹药当场服用（cultivation_log, method_key=market）
+  - POST /api/market/sell { username, rewardId } → 坊市牙人按品阶估价回购，得灵石；卖出后 secret_reward.status=1，从储物空间消失
+  - POST /api/market/list-item { username, rewardId, price } → 玩家私摊：自由标价（牙人估价 0.5~3 倍，估价为确定性公式，前端展示与后端校验一致），挂单时 secret_reward.status=2（寄售中，不在储物空间）
+  - POST /api/market/cancel { username, itemId } → 撤单，藏品状态回 0；已成交不可撤
+  - 私摊成交：其他弟子买走时双向结算（买家 -price、卖家 +price、各记一条 market_order）；自家摊位不可自买自卖
+  - 游方散修：每次 GET /list 有 18% 概率挑走一件「价格 ≤ 估价×1.5」的玩家私摊，单人也有成交机会
+  - GET /api/market/orders?username= → 交易手札（market_order，buy/sell 流水）
+  - 摊位货品存 `market_item`（NPC 摊主：噬魂老魔/白骨夫人/鬼手药王/玄阴子… + 玩家私摊 seller_type=user / reward_id 关联藏品），在售 NPC 货 < 10 件时 MarketService.restock() 自动随机补货；
+    品阶权重 黄50/玄30/地15/天5，价格按品阶×类型系数；药名/价格/概率全硬编码在 MarketService。
+  - 灵石账本：买卖都记 `forum_income`（source=market，买为负、卖为正），因此 CultivationService.stonesBalance 与洞府余额口径自动一致，不需要改动。
 - **后端强依赖 MySQL**：`jdbc:mysql://localhost:3306/login_db`，用户 `root`，密码 `123456`。
   → **本机已安装 MySQL 8 且开机自启**（客户端在 `C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe`）。
   `login_db` 与 `user` 表通过 `sql/login_db.sql` 建好（完整版，含 DROP，手动重建用）。

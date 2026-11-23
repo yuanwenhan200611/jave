@@ -486,3 +486,96 @@ CREATE TABLE IF NOT EXISTS `forum_income` (
 
 SELECT COUNT(*) AS forum_like_ready FROM `forum_like`;
 SELECT COUNT(*) AS forum_income_ready FROM `forum_income`;
+
+-- ============================================================
+-- 13. 坊市·交易市场（幂等）
+--     market_item   坊市在售货品（NPC 摊主自动补货 + 玩家私摊寄售）
+--     market_order  交易手札（买入 / 卖出流水）
+--     secret_reward.status  归属状态：0 持有 / 1 已售出 / 2 寄售中（后两者都不在储物空间）
+--     经济闭环（灵石账本，经 forum_income source=market 入账，正为卖得、负为买耗）：
+--       买：可用灵石 ≥ 售价 → forum_income 记 -price → 货入储物空间 / 功法收录 / 丹药当场服用
+--       卖：储物空间的法宝/残篇/神通按品阶估价回购 → forum_income 记 +price
+--       寄售：玩家自定标价（估价 0.5~3 倍）挂私摊，可撤单；其他弟子或「游方散修」买走后，
+--             卖家得灵石、买家得货，双向各记一条流水（散修捡漏时每次逛坊市小概率触发）
+-- ============================================================
+
+-- 13.1 secret_reward 增列 status（MySQL 8 无 ADD COLUMN IF NOT EXISTS，条件语句幂等）
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'secret_reward'
+    AND COLUMN_NAME = 'status'
+);
+SET @ddl := IF(@col_exists = 0,
+  'ALTER TABLE `secret_reward` ADD COLUMN `status` TINYINT NOT NULL DEFAULT 0 COMMENT ''归属状态：0 持有 / 1 已售出 / 2 寄售中'' AFTER `amount`',
+  'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 13.2 坊市在售货品表
+CREATE TABLE IF NOT EXISTS `market_item` (
+  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `seller`      VARCHAR(50)  NOT NULL                COMMENT '摊主（NPC 名或用户名）',
+  `seller_type` VARCHAR(10)  NOT NULL DEFAULT 'npc'  COMMENT '摊主类型：npc / user',
+  `title`       VARCHAR(100) NOT NULL                COMMENT '货品名',
+  `description` VARCHAR(300) NULL                    COMMENT '货品介绍（摊主吆喝）',
+  `item_type`   VARCHAR(20)  NOT NULL                COMMENT '类型：artifact 法宝 / technique 功法 / divine_ability 神通 / pill 丹药',
+  `grade`       VARCHAR(20)  NULL                    COMMENT '品阶：黄阶/玄阶/地阶/天阶',
+  `rarity`      VARCHAR(20)  NOT NULL DEFAULT 'common' COMMENT '稀有度：common/uncommon/rare/epic/legendary',
+  `icon`        VARCHAR(10)  NULL                    COMMENT '展示图标',
+  `reward_id`   BIGINT       NULL                    COMMENT '玩家寄售关联 secret_reward.id（NPC 货为 NULL）',
+  `price`       BIGINT       NOT NULL DEFAULT 0      COMMENT '售价（灵石）',
+  `status`      TINYINT      NOT NULL DEFAULT 0      COMMENT '状态：0 在售 / 1 已售 / 2 已撤单',
+  `buyer`       VARCHAR(50)  NULL                    COMMENT '买主（成交后回填）',
+  `buy_time`    DATETIME     NULL                    COMMENT '成交时间',
+  `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上架时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_mi_status` (`status`),
+  KEY `idx_mi_type` (`item_type`),
+  KEY `idx_mi_seller` (`seller`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '坊市·在售货品';
+
+-- 13.2b 老库补列 reward_id（MySQL 8 无 ADD COLUMN IF NOT EXISTS，条件语句幂等）
+SET @col_exists := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'market_item'
+    AND COLUMN_NAME = 'reward_id'
+);
+SET @ddl := IF(@col_exists = 0,
+  'ALTER TABLE `market_item` ADD COLUMN `reward_id` BIGINT NULL COMMENT ''玩家寄售关联 secret_reward.id（NPC 货为 NULL）'' AFTER `icon`',
+  'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 13.3 交易手札表
+CREATE TABLE IF NOT EXISTS `market_order` (
+  `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`     VARCHAR(50)  NOT NULL                COMMENT '交易人',
+  `trade_type`   VARCHAR(10)  NOT NULL                COMMENT '方向：buy 购入 / sell 卖出',
+  `title`        VARCHAR(100) NOT NULL                COMMENT '货品名快照',
+  `item_type`    VARCHAR(20)  NULL                    COMMENT '货品类型快照',
+  `rarity`       VARCHAR(20)  NULL                    COMMENT '稀有度快照',
+  `price`        BIGINT       NOT NULL DEFAULT 0      COMMENT '成交价（灵石，买入为支出、卖出为所得）',
+  `counterparty` VARCHAR(50)  NULL                    COMMENT '对手方（NPC 摊主）',
+  `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '成交时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_mo_user` (`username`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '坊市·交易手札';
+
+-- 13.4 NPC 首批摊位（仅空表时插入，之后由后端自动补货维持货品量）
+INSERT INTO `market_item` (`seller`, `seller_type`, `title`, `description`, `item_type`, `grade`, `rarity`, `icon`, `price`, `status`)
+SELECT t.* FROM (
+  SELECT '噬魂老魔' AS seller, 'npc' AS seller_type, '噬魂幡' AS title, '三百冤魂炼就，出鞘时阴风怒号。便宜卖，童叟无欺——冤魂认主那点小事自己克服。' AS description, 'artifact' AS item_type, '黄阶' AS grade, 'common' AS rarity, '🏴' AS icon, 260 AS price, 0 AS status
+  UNION ALL SELECT '白骨夫人', 'npc', '玄阴镜', '照人照鬼照心魔，镜中人比你先笑。玄阶货色，识货的来。', 'artifact', '玄阶', 'uncommon', '🪞', 780, 0
+  UNION ALL SELECT '赤炎老祖', 'npc', '赤炎珠', '地火淬炼三十年，握着暖手，冬天很实用。也能烧人。', 'artifact', '玄阶', 'uncommon', '🔴', 920, 0
+  UNION ALL SELECT '玄阴子', 'npc', '镇魔玄塔', '塔内封着一头上古凶灵，买了记得每日喂香火，别嫌麻烦。', 'artifact', '地阶', 'rare', '🗼', 2600, 0
+  UNION ALL SELECT '血无常', 'npc', '太阴炼形图', '宗主压箱底的宝贝流出来了，别问为什么，问就是宗门近年手头紧。', 'artifact', '天阶', 'epic', '🗺️', 6800, 0
+  UNION ALL SELECT '鬼手药王', 'npc', '残卷·血煞引', '半卷上古残篇，字迹斑驳。参悟片刻便觉魔气入体，物超所值。', 'fragment', '黄阶', 'common', '📜', 180, 0
+  UNION ALL SELECT '鬼手药王', 'npc', '残卷·幽冥骨典', '另半卷上古残篇，读时半夜有敲窗声，属正常现象。', 'fragment', '玄阶', 'uncommon', '📜', 560, 0
+  UNION ALL SELECT '噬魂老魔', 'npc', '血遁千里（残）', '一门逃跑神通的残本，只会前半段——但前半段足够保命了。', 'divine_ability', '玄阶', 'uncommon', '👁️', 1100, 0
+  UNION ALL SELECT '玄阴子', 'npc', '噬灵之瞳', '挖自某位不肯透露姓名的化神修士。装上之后看什么都透三分。', 'divine_ability', '地阶', 'rare', '👁️', 3200, 0
+  UNION ALL SELECT '鬼手药王', 'npc', '淬体血丹', '一枚入腹，魔气攻心又顺气。服用后修为小涨，疼是一定疼的。', 'pill', '黄阶', 'common', '💊', 150, 0
+  UNION ALL SELECT '鬼手药王', 'npc', '九转噬魂丹', '药王得意之作。服后修为大涨，偶尔看见已故之人，别理他们。', 'pill', '玄阶', 'uncommon', '💊', 480, 0
+  UNION ALL SELECT '赤炎老祖', 'npc', '残篇·焚天诀', '练到一半发现是残篇的功法。练一半也够吓人了。', 'technique', '玄阶', 'uncommon', '📕', 880, 0
+) t
+WHERE NOT EXISTS (SELECT 1 FROM `market_item`);
+
+SELECT COUNT(*) AS market_item_ready FROM `market_item`;
+SELECT COUNT(*) AS market_order_ready FROM `market_order`;

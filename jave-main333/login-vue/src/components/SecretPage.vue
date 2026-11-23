@@ -54,7 +54,7 @@
           </div>
         </div>
         <p class="explore-fee-done" v-if="found.fee !== undefined">
-          {{ found.fee > 0 ? `此行破费 ${found.fee} 贡献值（天机引路费）` : '此秘境你已开辟过，免费重游' }}
+          此行破费 {{ found.fee }} 贡献值（天机引路费 · 每次必收）
         </p>
         <p class="explore-text">{{ found.encounter }}</p>
         <p class="detail-desc">{{ found.description }}</p>
@@ -119,7 +119,7 @@
           </div>
           <div class="cost-plaque" :class="{ free: !(item.requiredContribution > 0) }">
             <template v-if="isEntered(item.id)">
-              <span class="cost-done">✦ 已开辟 · 免费重游</span>
+              <span class="cost-done">✦ 已开辟 · 重入同价收费</span>
             </template>
             <template v-else-if="item.requiredContribution > 0">
               <span class="cost-num">{{ item.requiredContribution }}</span>
@@ -160,16 +160,14 @@
 
         <!-- ===== 破界区（贡献值经济：玄阶以上收门票，低端为无主之境） ===== -->
         <div v-if="detail" class="enter-box" :class="{ free: !(detail.requiredContribution > 0) }">
-          <template v-if="isEntered(detail.id)">
-            <span class="entered-tag">✅ 已开辟 · 免费重游</span>
-          </template>
-          <template v-else-if="detail.requiredContribution > 0">
+          <template v-if="detail.requiredContribution > 0">
             <div class="cost-hero">
               <span class="cost-hero-label">破界门票</span>
               <span class="cost-hero-num">{{ detail.requiredContribution }}</span>
               <span class="cost-hero-unit">贡献值</span>
               <span class="cost-hero-balance">血功池 {{ secretAvailable }}</span>
             </div>
+            <span v-if="isEntered(detail.id)" class="entered-tag">✅ 已开辟 · 重入同价收费，无豁免</span>
             <button type="button" class="enter-btn" :disabled="entering" @click="enter">
               {{ entering ? '破界中……' : '破界进入此秘境' }}
             </button>
@@ -233,8 +231,8 @@ const emit = defineEmits(['nav', 'logout'])
 
 const { showToast } = useToast()
 
-/** 随机探秘的「天机引路费」，与后端 SecretService.ROAM_FEE 对齐 */
-const ROAM_FEE = 20
+/** 随机探秘的「天机引路费」，与后端 SecretService.ROAM_FEE 对齐；每次探秘必收，无豁免 */
+const ROAM_FEE = 200
 
 const rootDesc = ref('无尽秘境，待你开辟')
 const tabs = ref([{ id: 0, name: '全部秘境', icon: '🗺️' }])
@@ -386,7 +384,7 @@ function closeDetail() {
   related.value = []
 }
 
-/** 破界进入秘境：扣门票贡献值，首入掷探索奖励 */
+/** 破界进入秘境：门票每次照收（已开辟重入同价），掷探索奖励 */
 async function enter() {
   if (!detail.value || entering.value) return
   entering.value = true
@@ -401,8 +399,8 @@ async function enter() {
       .filter(rw => rw.rarity === 'epic' || rw.rarity === 'legendary')
       .map(rw => rw.name)
     showToast(highlights.length
-      ? `破界成功！「${detail.value.title}」已开辟，竟得 ${highlights.join('、')}！`
-      : `破界成功！「${detail.value.title}」已开辟，可随时重游`)
+      ? `破界成功！「${detail.value.title}」再入也无妨，竟得 ${highlights.join('、')}！`
+      : `破界成功！「${detail.value.title}」，门票已扣，造化在天`)
     await loadSecretStatus()
   } catch (e) {
     showToast(e.message || '破界失败')

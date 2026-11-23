@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fenglin.springboottest.entity.CultivationLog;
 import com.fenglin.springboottest.entity.ForumIncome;
 import com.fenglin.springboottest.entity.ForumPost;
+import com.fenglin.springboottest.entity.MarketOrder;
 import com.fenglin.springboottest.entity.SearchLog;
 import com.fenglin.springboottest.entity.User;
 import com.fenglin.springboottest.entity.UserProfile;
@@ -14,6 +15,7 @@ import com.fenglin.springboottest.entity.UserSkill;
 import com.fenglin.springboottest.mapper.CultivationLogMapper;
 import com.fenglin.springboottest.mapper.ForumIncomeMapper;
 import com.fenglin.springboottest.mapper.ForumPostMapper;
+import com.fenglin.springboottest.mapper.MarketOrderMapper;
 import com.fenglin.springboottest.mapper.SearchLogMapper;
 import com.fenglin.springboottest.mapper.UserMapper;
 import com.fenglin.springboottest.mapper.UserProfileMapper;
@@ -60,6 +62,7 @@ public class ProfileService {
     private final UserSkillMapper userSkillMapper;
     private final UserSecretMapper userSecretMapper;
     private final CultivationLogMapper cultivationLogMapper;
+    private final MarketOrderMapper marketOrderMapper;
 
     /**
      * 读取个人档案（不存在则自动创建默认档案）+ 跨模块统计。
@@ -144,6 +147,17 @@ public class ProfileService {
                 .mapToLong(l -> l.getCostContribution() == null ? 0L : l.getCostContribution())
                 .sum();
 
+        // 坊市联动：交易笔数 / 买入所耗灵石 / 卖出所得灵石（表未建时容错为 0）
+        List<MarketOrder> marketOrders = safeMarketOrders(name);
+        long marketSpent = marketOrders.stream()
+                .filter(o -> "buy".equals(o.getTradeType()))
+                .mapToLong(o -> o.getPrice() == null ? 0L : o.getPrice())
+                .sum();
+        long marketEarned = marketOrders.stream()
+                .filter(o -> "sell".equals(o.getTradeType()))
+                .mapToLong(o -> o.getPrice() == null ? 0L : o.getPrice())
+                .sum();
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("postCount", postCount == null ? 0L : postCount);
         stats.put("likeCount", likeCount);
@@ -161,6 +175,9 @@ public class ProfileService {
         stats.put("cultivation", profile.getCultivation() == null ? 0L : profile.getCultivation());
         stats.put("stonesSpent", cultStonesSpent);
         stats.put("stonesAvailable", stonesTotal - cultStonesSpent);
+        stats.put("marketTradeCount", marketOrders.size());
+        stats.put("marketSpent", marketSpent);
+        stats.put("marketEarned", marketEarned);
         stats.put("contributionAvailable", contributionTotal - skillSpent - secretSpent - cultContributionSpent);
 
         Map<String, Object> userBrief = new HashMap<>();
@@ -254,6 +271,17 @@ public class ProfileService {
         try {
             return userSecretMapper.selectList(
                     new LambdaQueryWrapper<UserSecret>().eq(UserSecret::getUsername, name));
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    /** 坊市交易手札（表未建时容错为空，不让洞府挂掉） */
+    private List<MarketOrder> safeMarketOrders(String name) {
+        try {
+            List<MarketOrder> list = marketOrderMapper.selectList(
+                    new LambdaQueryWrapper<MarketOrder>().eq(MarketOrder::getUsername, name));
+            return list == null ? new ArrayList<>() : list;
         } catch (Exception e) {
             return new ArrayList<>();
         }
