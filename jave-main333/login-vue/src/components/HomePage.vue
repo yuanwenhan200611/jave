@@ -9,7 +9,12 @@
     <header class="hero">
       <div class="hero-head">
         <span class="hero-seal">宗</span>
-        <h1>恭迎 {{ username }} 道友归宗</h1>
+        <div class="hero-title">
+          <h1>恭迎 {{ username }} 道友归宗</h1>
+          <p v-if="totalItems" class="hero-sub">
+            宗门典藏 {{ totalItems }} 卷 · {{ topCategories.length }} 类道藏 · 今日亦当精进魔功
+          </p>
+        </div>
       </div>
 
       <form class="search" novalidate @submit.prevent="onSearch">
@@ -24,6 +29,7 @@
             class="search-input"
             placeholder="检索功法、秘境、丹药、法宝……"
           >
+          <button v-if="query" class="search-clear" type="button" title="清空关键词" @click="query = ''">✕</button>
           <select v-model="searchCategoryId" class="search-cat">
             <option :value="0">全部分类</option>
             <option v-for="cat in flatCategories" :key="cat.id" :value="cat.id">
@@ -50,9 +56,68 @@
       </form>
     </header>
 
+    <!-- 个人修行速览 + 宗门各堂快捷入口 -->
+    <section class="overview">
+      <div class="overview-panel">
+        <div class="section-head">
+          <h2>修行速览</h2>
+          <span class="section-extra link" @click="onNav('profile')">洞府详情 →</span>
+        </div>
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <span class="mini-label">境界</span>
+            <b>{{ profileInfo.realm || '炼气' }}</b>
+            <small>修为 {{ myStats.cultivation || 0 }}</small>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-label">可用灵石</span>
+            <b>{{ myStats.stonesAvailable ?? 0 }}</b>
+            <small>累计 {{ myStats.stonesTotal || 0 }}</small>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-label">可用贡献</span>
+            <b>{{ myStats.contributionAvailable ?? 0 }}</b>
+            <small>累计 {{ myStats.contributionTotal || 0 }}</small>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-label">任务功勋</span>
+            <b>{{ myStats.questDone || 0 }}</b>
+            <small>进行中 {{ myStats.questActive || 0 }}</small>
+          </div>
+          <div class="mini-stat">
+            <span class="mini-label">已习功法</span>
+            <b>{{ myStats.skillCount || 0 }}</b>
+            <small>已辟秘境 {{ myStats.secretCount || 0 }}</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="overview-panel">
+        <div class="section-head">
+          <h2>宗门速达</h2>
+          <span class="section-extra">一键直达各堂</span>
+        </div>
+        <div class="quick-grid">
+          <button
+            v-for="q in quickEntries"
+            :key="q.key"
+            type="button"
+            class="quick-item"
+            @click="onNav(q.key)"
+          >
+            <span class="quick-icon">{{ q.icon }}</span>
+            <span>{{ q.label }}</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- 分类导航 -->
     <section class="cats">
-      <div class="section-head"><h2>分类导航</h2></div>
+      <div class="section-head">
+        <h2>分类导航</h2>
+        <span class="section-extra">点选分类，快速求索</span>
+      </div>
       <div class="cat-chips">
         <button
           v-for="c in topCategories"
@@ -110,22 +175,51 @@
       </div>
     </section>
 
-    <!-- 热门榜 -->
-    <section class="hot">
-      <div class="section-head"><h2>炙手可热</h2></div>
-      <div class="hot-grid">
-        <div
-          v-for="(item, idx) in hotItems"
-          :key="item.id"
-          class="hot-card"
-          @click="onEntry(item)"
-        >
-          <span class="rank" :class="{ top: idx < 3 }">{{ idx + 1 }}</span>
-          <div class="hot-body">
-            <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
-            <p>{{ item.description }}</p>
-            <span class="hot-meta">{{ categoryNameById(item.categoryId) }} · {{ item.viewCount }} 阅</span>
+    <!-- 热门榜 + 最新收录（数据均来自 /api/home/summary） -->
+    <section class="discover">
+      <div class="discover-panel">
+        <div class="section-head">
+          <h2>炙手可热</h2>
+          <span class="section-extra">浏览量 TOP 6</span>
+        </div>
+        <div class="discover-list">
+          <div
+            v-for="(item, idx) in hotItems.slice(0, 6)"
+            :key="item.id"
+            class="discover-card"
+            @click="onEntry(item)"
+          >
+            <span class="rank" :class="{ top: idx < 3 }">{{ idx + 1 }}</span>
+            <div class="discover-body">
+              <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
+              <p>{{ item.description }}</p>
+              <span class="hot-meta">{{ categoryNameById(item.categoryId) }} · {{ item.viewCount || 0 }} 阅</span>
+            </div>
           </div>
+          <p v-if="!hotItems.length" class="empty">宗门尚无热门卷宗</p>
+        </div>
+      </div>
+
+      <div class="discover-panel">
+        <div class="section-head">
+          <h2>新入藏</h2>
+          <span class="section-extra">最近收录 TOP 6</span>
+        </div>
+        <div class="discover-list">
+          <div
+            v-for="(item, idx) in latestItems.slice(0, 6)"
+            :key="item.id"
+            class="discover-card"
+            @click="onEntry(item)"
+          >
+            <span class="new-mark" :class="{ fresh: idx < 2 }">{{ idx < 2 ? '新' : '✦' }}</span>
+            <div class="discover-body">
+              <h3>{{ item.title }}<small v-if="item.grade" class="grade">{{ item.grade }}</small></h3>
+              <p>{{ item.description }}</p>
+              <span class="hot-meta">{{ categoryNameById(item.categoryId) }}</span>
+            </div>
+          </div>
+          <p v-if="!latestItems.length" class="empty">暂无新入藏卷宗</p>
         </div>
       </div>
     </section>
@@ -165,9 +259,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
+import { fetchProfile } from '../api/profile'
 import {
   fetchHomeSummary,
   fetchHotKeywords,
@@ -232,6 +327,23 @@ const allCategories = ref([])
 const resultList = ref([])
 const resultTotal = computed(() => total.value)
 const categoryCounts = ref({})
+const totalItems = ref(0)
+
+// 个人修行速览（复用洞府接口，失败时静默降级为 0，不影响首页浏览）
+const profileInfo = ref({})
+const myStats = ref({})
+
+// 宗门速达：与 SectNav 的视图 key 保持一致
+const quickEntries = [
+  { key: 'secret', label: '秘境', icon: '🗺️' },
+  { key: 'skill', label: '功法阁', icon: '📖' },
+  { key: 'cultivation', label: '魔功殿', icon: '🔥' },
+  { key: 'quest', label: '任务阁', icon: '🗡️' },
+  { key: 'market', label: '坊市', icon: '💰' },
+  { key: 'rank', label: '宗门榜', icon: '🏆' },
+  { key: 'forum', label: '血辩台', icon: '📜' },
+  { key: 'profile', label: '洞府', icon: '🏠' }
+]
 
 // 顶级分类（分类导航用，条目数来自后端聚合）
 const topCategories = computed(() =>
@@ -277,9 +389,21 @@ async function loadSummary() {
     hotItems.value = data.hotItems || []
     latestItems.value = data.latestItems || []
     categoryCounts.value = data.categoryCounts || {}
+    totalItems.value = data.totalItems || 0
     allCategories.value = flatten(categories.value)
   } catch (e) {
     showToast(e.message || '首页数据加载失败')
+  }
+}
+
+async function loadProfile() {
+  if (!props.username) return
+  try {
+    const data = await fetchProfile(props.username)
+    profileInfo.value = data.profile || {}
+    myStats.value = data.stats || {}
+  } catch {
+    // 个人数据取不到时保持默认 0，首页其余功能照常可用
   }
 }
 
@@ -291,9 +415,25 @@ async function loadHotKeywords() {
   }
 }
 
+// 详情弹层：Esc 关闭 + 打开时锁定页面滚动
+function onKeydown(e) {
+  if (e.key === 'Escape' && detail.value) closeDetail()
+}
+
+watch(detail, (v) => {
+  document.body.style.overflow = v ? 'hidden' : ''
+})
+
 onMounted(() => {
   loadSummary()
   loadHotKeywords()
+  loadProfile()
+  window.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  document.body.style.overflow = ''
 })
 
 // 洞府「再寻一次」：父组件改变 searchSeed 时自动搜索
@@ -478,6 +618,8 @@ function closeDetail() {
   flex-shrink: 0;
 }
 
+.hero-title { text-align: left; }
+
 .hero h1 {
   font-family: "STKaiti", "KaiTi", serif;
   font-size: 26px;
@@ -486,6 +628,13 @@ function closeDetail() {
   color: #f3e8d6;
   text-shadow: 0 2px 18px rgba(200, 16, 46, .45);
   margin: 0;
+}
+
+.hero-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(212, 175, 55, .68);
 }
 
 .search {
@@ -516,6 +665,22 @@ function closeDetail() {
   color: var(--text-dim);
   flex-shrink: 0;
 }
+
+.search-clear {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, .12);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color .18s, background .18s;
+}
+
+.search-clear:hover { color: #f7e9c4; background: rgba(200, 16, 46, .4); }
 
 .search-input {
   flex: 1;
@@ -612,6 +777,99 @@ section { padding: 6px 32px 22px; }
 }
 
 .clear-btn:hover { color: var(--gold-soft); border-color: var(--gold); }
+
+.section-extra.link { cursor: pointer; transition: color .18s; }
+.section-extra.link:hover { color: var(--gold-soft); }
+
+/* ===== 修行速览 + 宗门速达 ===== */
+.overview {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 14px;
+  padding: 0 32px 6px;
+}
+
+.overview-panel {
+  padding: 16px 18px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(200, 16, 46, .12), transparent 65%),
+    rgba(10, 7, 15, .78);
+}
+
+.overview-panel .section-head { margin-bottom: 12px; }
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(12, 8, 18, .65);
+  text-align: center;
+}
+
+.mini-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.mini-stat b {
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--gold-soft);
+}
+
+.mini-stat small {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quick-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(12, 8, 18, .65);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: transform .15s, border-color .18s, color .18s, background .18s;
+}
+
+.quick-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  color: var(--gold-soft);
+  background: rgba(28, 18, 36, .75);
+}
+
+.quick-icon { font-size: 19px; line-height: 1; }
 
 /* ===== 分类导航 ===== */
 .cats { padding-top: 18px; }
@@ -732,33 +990,43 @@ section { padding: 6px 32px 22px; }
   vertical-align: middle;
 }
 
-/* ===== 热门榜 ===== */
-.hot { border-top: 1px solid var(--border); padding-top: 18px; }
-
-.hot-grid {
+/* ===== 热门榜 + 新入藏 ===== */
+.discover {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
 }
 
-.hot-card {
+.discover-panel {
+  padding: 14px 16px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(10, 7, 15, .62);
+}
+
+.discover-list { display: flex; flex-direction: column; gap: 8px; }
+
+.discover-card {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(10, 7, 15, .78);
+  border-radius: 10px;
+  background: rgba(12, 8, 18, .72);
   cursor: pointer;
   transition: border-color .18s, background .18s;
 }
 
-.hot-card:hover {
+.discover-card:hover {
   border-color: var(--gold);
-  background: rgba(28, 18, 36, .65);
+  background: rgba(28, 18, 36, .7);
 }
 
-.rank {
+.rank,
+.new-mark {
   width: 24px;
   height: 24px;
   border-radius: 7px;
@@ -773,23 +1041,24 @@ section { padding: 6px 32px 22px; }
   margin-top: 2px;
 }
 
-.rank.top {
+.rank.top,
+.new-mark.fresh {
   color: #f7e9c4;
   background: linear-gradient(145deg, #8c0f1d, #c8102e);
   border-color: var(--gold);
   box-shadow: 0 0 10px rgba(200, 16, 46, .4);
 }
 
-.hot-body { flex: 1; min-width: 0; }
+.discover-body { flex: 1; min-width: 0; }
 
-.hot-body h3 {
+.discover-body h3 {
   font-size: 15px;
   color: #f3e8d6;
   letter-spacing: 1px;
   margin: 0 0 4px;
 }
 
-.hot-body p {
+.discover-body p {
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-soft);
@@ -1017,23 +1286,33 @@ section { padding: 6px 32px 22px; }
 }
 
 /* ===== 响应式 ===== */
+@media (max-width: 980px) {
+  .overview,
+  .discover { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 780px) {
   .hero { padding: 26px 18px 22px; }
   .hero h1 { font-size: 20px; letter-spacing: 2px; }
   section { padding-left: 18px; padding-right: 18px; }
   .cat-chips { grid-template-columns: repeat(3, 1fr); }
-  .hot-grid { grid-template-columns: 1fr; }
+  .mini-stats { grid-template-columns: repeat(3, 1fr); }
 
   /* 移动端面板底色再实一点，保证小字可读 */
   .home { background: rgba(8, 5, 12, .62); }
   .cat-chip,
-  .hot-card,
+  .discover-card,
   .result-row { background: rgba(12, 8, 18, .82); }
 }
 
 
 @media (max-width: 480px) {
   .cat-chips { grid-template-columns: repeat(2, 1fr); }
+  .mini-stats { grid-template-columns: repeat(2, 1fr); }
+  .mini-stat:last-child { grid-column: span 2; }
+  .quick-grid { grid-template-columns: repeat(4, 1fr); }
+  .quick-item { font-size: 11px; letter-spacing: 0; }
+  .hero-sub { font-size: 11px; letter-spacing: 1px; }
   .row-meta { display: none; }
 }
 </style>
