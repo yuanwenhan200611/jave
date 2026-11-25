@@ -56,8 +56,8 @@ public class SectService {
      * 宗门榜：NPC 弟子（sect_member）+ 当前登录玩家（实时折算）。
      *
      * @param username 登录名，为空则只返回 NPC（兼容旧调用）
-     * @param sortBy   power（默认，战力降序）或 contribution（贡献降序）
-     * @param tier     elder（长老榜）/ disciple（弟子榜）/ all（默认，全宗）
+     * @param sortBy   power（默认，战力降序）或 contribution（贡献降序）；弟子榜忽略此参数，固定按修为
+     * @param tier     elder（长老榜）/ disciple（弟子榜，按修为）/ all（默认，全宗）
      */
     public List<RankEntryVO> rankBoard(String username, String sortBy, String tier) {
         List<RankEntryVO> entries = new ArrayList<>();
@@ -75,6 +75,17 @@ public class SectService {
             entries.removeIf(e -> !e.isElder());
         } else if ("disciple".equalsIgnoreCase(tier)) {
             entries.removeIf(RankEntryVO::isElder);
+        }
+
+        // 弟子榜：固定按修为排位（大境界 + 小层次权重降序），战力/贡献仅作并列时的次级参考。
+        // 长老榜 / 全宗榜：沿用战力榜 / 贡献榜切换逻辑。
+        if ("disciple".equalsIgnoreCase(tier)) {
+            Comparator<RankEntryVO> byRealm = Comparator
+                    .comparingInt((RankEntryVO e) -> RealmTier.realmWeight(e.getRealmFull())).reversed();
+            entries.sort(byRealm
+                    .thenComparing((RankEntryVO e) -> nz(e.getPower()), Comparator.reverseOrder())
+                    .thenComparing(e -> e.getName() == null ? "" : e.getName()));
+            return entries;
         }
 
         Comparator<RankEntryVO> first;

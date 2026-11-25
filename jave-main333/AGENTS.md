@@ -46,6 +46,21 @@ jave-main/
     → 玩家**不写 sect_member 表**（避免污染种子数据）：SectService.buildMeEntry 复用 ProfileService.getProfile 取数，
     战力 = 修为×10 + 已习功法数×2000 + 已完成任务数×1000 + 10000 底薪，贡献 = 洞府口径的累计贡献值；
     VO 为 `vo/RankEntryVO`（多带 me/cultivation/username/tier/tierLabel/elder/stage/realmFull 字段）。改数值只动 SectService 顶部 4 个常量。
+    **排序口径（2026-11-25 定稿）**：长老榜/全宗榜按 sortBy=power|contribution 切换；**弟子榜固定按修为排位**，
+    用 `RealmTier.realmWeight(realmFull)` 降序（大境界×100+层次序号），战力仅并列时作次参考——
+    SectService.rankBoard 里 disciple 分支提前 return，前端弟子榜隐藏战力/贡献切换、显示「📿 修为榜」，
+    领奖台主数值与「距上一名」文案在弟子榜改显修为境界。改排序只动 SectService 这一分支 + RankPage 的 boardValue/gapText。
+    **身份称号口径**：魔尊只是称号不是修为——宗主血无常 `title=魔尊 / realm=渡劫 / stage=九劫`（不再是 realm=魔尊）；
+    弟子身份与修为严格一一对应：炼气=记名弟子、筑基=外门弟子、金丹=内门弟子、元婴·化神=真传弟子（圣子/圣女为化神巅峰值）。
+    两份 sql 的 INSERT + 阶段回填 CASE + 3.2 幂等 UPDATE 三处必须同步，老库靠 3.2 纠正。
+    **标签去重（2026-11-25）**：榜单/档案只显示身份 title（魔尊/太上长老/内门弟子/外门弟子…），
+    不再显示辈分标签（弟子境/真传境/长老境/至尊境）——RankPage 已删 tier-tag 与 tier-legend 图例、
+    ProfilePage 已删 tier-tag 与境界下拉里的 tierLabel；后端 tier/tierLabel 字段保留（VO/其它页可能用），只是前端不展示。
+    身份细分照旧（不强制并成内门/外门两档），魔尊即宗主、长老榜人人带「长老」、弟子用内门/外门弟子身份区分。
+    **战力口径（2026-11-25）**：同一大境界内小层次越高战力越高、跨境界整体递增（战力是纯展示种子值，改它只影响长老榜/全宗榜的战力榜排序，不动修为体系）。
+    两份 sql 的 INSERT + 3.1 阶段回填 CASE + 3.3 幂等 UPDATE 三处同步纠正 8 处倒挂：阿蛮金丹中期31万、谢无咎化神后期89万、
+    铁面判/鬼手翁炼虚圆满185/182万（须>大成墨鸦180万）、赤炎老祖合体后期395万、玉面罗刹合体巅峰415万、白骨真人渡劫七劫850万、
+    千面魔君层次由非法的「大乘圆满」改「大乘后期」（大乘只有初/中/后/巅峰）。改战力三处都要动，老库靠 3.3 纠正。
   - **境界分层统一口径（2026-11-25）**：后端 `util/RealmTier.java`、前端 `src/utils/realm.js` 两份同源定义。
     十大境界不变：炼气/筑基/金丹=弟子境，元婴/化神=真传境，炼虚/合体/大乘/渡劫=长老境，魔尊=至尊境。
     分榜规则：**炼虚及以上进长老榜**（长老境+至尊境），化神及以下进弟子榜。
@@ -60,7 +75,8 @@ jave-main/
     **注意 fullRealm 第二参数是层次字符串不是修为数**，曾因传成 cultivation 导致只显示大境界，已修。
   - **宗门人物种子（2026-11-25 扩充至 78 人）**：`sql/seed_sect.sql` + `sql/ensure_db.sql` 同步维护（判重插入，可反复执行）。
     长老榜 39：宗主/副宗主各1、太上长老5、内门长老10、外门长老15、执法/内务/丹殿长老/堂主/长老/首席弟子若干；
-    弟子榜 39：圣子1、圣女1、真传弟子10、内门弟子9、外门弟子11、记名弟子7（+ admin 玩家实时折算入榜 → 40）。
+    弟子榜 39：圣子1、圣女1、真传弟子12、内门弟子11、外门弟子8、记名弟子6（+ admin 玩家实时折算入榜 → 40）。
+    （2026-11-25 身份/修为对齐后：苏九黎/谢无咎→真传、雷小斧/苏小媚/阿蛮→内门，合计不变）
     加新人只改这两份 sql 的 INSERT UNION ALL 列（含 stage），改完手动 `mysql < sql/seed_sect.sql` 施用到库。
     前端身份筛选 GRADE_ORDER/GRADE_ICON 在 RankPage.vue，新身份记得补进去（否则图标回落为「·」）。
   - 血辩台 `ForumPage.vue`（原论道，2026-11-18 魔宗化改造）：GET /api/forum/posts（username 可选，返回 incensedIds/counteredIds）

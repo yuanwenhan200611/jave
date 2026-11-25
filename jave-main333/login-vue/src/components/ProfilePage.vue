@@ -24,7 +24,6 @@
           <div class="name-line">
             <h2>{{ profile.nickname || username }}</h2>
             <span class="realm-pill" :class="realmClass(profile.realm)">{{ myFullRealm }}</span>
-            <span class="tier-tag">{{ tierLabel(profile.realm) }}</span>
             <span class="hall-tag">{{ profile.hall || '血煞堂' }}</span>
           </div>
           <p class="uname-line">道号 {{ username }} · 入宗 {{ fmtDate(user.createdAt) }}</p>
@@ -50,7 +49,7 @@
           <label class="field">
             <span>境界</span>
             <select v-model="form.realm">
-              <option v-for="r in REALMS" :key="r" :value="r">{{ r }} · {{ tierLabel(r) }}</option>
+              <option v-for="r in REALMS" :key="r" :value="r">{{ r }}</option>
             </select>
           </label>
           <label class="field">
@@ -261,7 +260,7 @@ import { computed, onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import { fetchMyPosts, fetchMySearches, fetchProfile, saveProfile } from '../api/profile'
-import { REALMS, fullRealm, realmClass, stageOf, tierLabel } from '../utils/realm'
+import { REALMS, fullRealm, realmClass, stageOf } from '../utils/realm'
 import { fetchMyQuests } from '../api/quest'
 import { fetchMySkills } from '../api/skill'
 import { fetchMySecrets, fetchSecretStatus, fetchSecretStorage } from '../api/secret'
@@ -574,16 +573,6 @@ function fmtTime(s) {
   color: rgba(212, 175, 55, .8);
   border: 1px dashed rgba(212, 175, 55, .4);
   border-radius: 8px;
-  padding: 2px 8px;
-}
-
-/* 境界层级标签（与宗门榜同源） */
-.tier-tag {
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: rgba(226, 196, 110, .9);
-  border: 1px solid rgba(212, 175, 55, .4);
-  border-radius: 6px;
   padding: 2px 8px;
 }
 

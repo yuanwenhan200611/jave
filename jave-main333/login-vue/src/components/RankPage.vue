@@ -32,15 +32,15 @@
             <span class="rank-avatar">{{ myEntry.icon || '🧙' }}</span>
             <h2>{{ myEntry.name }}</h2>
             <span class="realm-pill" :class="realmClass(myEntry.realm)">{{ myEntry.realmFull || myEntry.realm }}</span>
-            <span class="tier-tag" :class="'t-' + myEntry.tier">{{ myEntry.tierLabel }}</span>
+            <span v-if="myEntry.title" class="rank-title">{{ myEntry.title }}</span>
             <span class="me-tag">本座</span>
           </div>
           <p class="my-meta">{{ myEntry.hall }} · 入宗 {{ fmtDate(myEntry.createTime) }} · 修为 {{ fmtNum(myEntry.cultivation) }}</p>
           <p class="my-hint">{{ gapText }}</p>
         </div>
         <div class="my-nums">
-          <span :class="{ strong: sortBy === 'power' }">战力 {{ fmtNum(myEntry.power) }}</span>
-          <span :class="{ strong: sortBy === 'contribution' }">贡献 {{ fmtNum(myEntry.contribution) }}</span>
+          <span :class="{ strong: sortBy === 'power' && tier !== 'disciple' }">战力 {{ fmtNum(myEntry.power) }}</span>
+          <span :class="{ strong: sortBy === 'contribution' && tier !== 'disciple' }">贡献 {{ fmtNum(myEntry.contribution) }}</span>
         </div>
       </section>
 
@@ -56,10 +56,10 @@
             <span class="rank-avatar">{{ myAllEntry.icon || '🧙' }}</span>
             <h2>{{ myAllEntry.name }}</h2>
             <span class="realm-pill" :class="realmClass(myAllEntry.realm)">{{ myAllEntry.realmFull || myAllEntry.realm }}</span>
-            <span class="tier-tag" :class="'t-' + myAllEntry.tier">{{ myAllEntry.tierLabel }}</span>
+            <span v-if="myAllEntry.title" class="rank-title">{{ myAllEntry.title }}</span>
             <span class="me-tag">本座</span>
           </div>
-          <p class="my-meta">{{ myAllEntry.hall }} · 修为 {{ fmtNum(myAllEntry.cultivation) }} · 现居{{ myAllEntry.tierLabel }}</p>
+          <p class="my-meta">{{ myAllEntry.hall }} · 修为 {{ fmtNum(myAllEntry.cultivation) }} · 身份{{ myAllEntry.title || '本座' }}</p>
           <p class="my-hint">
             你在{{ tierOf(myAllEntry.realm) === 'elder' || tierOf(myAllEntry.realm) === 'supreme' ? '长老榜' : '弟子榜' }}第 {{ myAllRank }} 名，
             {{ tier === 'elder' ? `突破至 ${ELDER_MIN_REALM} 方可入长老榜` : '精进境界即可角逐长老榜' }}
@@ -82,8 +82,11 @@
         </div>
 
         <div class="board-switch">
-          <button type="button" :class="{ active: sortBy === 'power' }" @click="switchSort('power')">⚔️ 战力榜</button>
-          <button type="button" :class="{ active: sortBy === 'contribution' }" @click="switchSort('contribution')">💰 贡献榜</button>
+          <span v-if="tier === 'disciple'" class="board-fixed">📿 修为榜 · 按境界排位</span>
+          <template v-else>
+            <button type="button" :class="{ active: sortBy === 'power' }" @click="switchSort('power')">⚔️ 战力榜</button>
+            <button type="button" :class="{ active: sortBy === 'contribution' }" @click="switchSort('contribution')">💰 贡献榜</button>
+          </template>
         </div>
 
         <div class="tools">
@@ -94,12 +97,7 @@
         </div>
       </section>
 
-      <!-- ===== 境界层级图例（大境界 + 小层次） ===== -->
-      <section class="tier-legend">
-        <span v-for="(t, key) in TIERS" :key="key" class="legend-item" :class="'t-' + key">
-          <i></i><b>{{ t.label }}</b><small>{{ t.realms.join(' / ') }}</small>
-        </span>
-      </section>
+      <!-- ===== 修为小层次图例 ===== -->
       <section class="stage-legend">
         <span v-for="r in legendRealms" :key="r" class="stage-legend-item">
           <b :class="realmClass(r)">{{ r }}</b><small>{{ STAGES[r].join(' · ') }}</small>
@@ -118,8 +116,8 @@
           <span class="podium-avatar">{{ slot.m.icon || '🧑‍🦲' }}</span>
           <h3>{{ slot.m.name }}<em v-if="slot.m.me">本座</em></h3>
           <span class="podium-realm" :class="realmClass(slot.m.realm)">{{ slot.m.realmFull || slot.m.realm }} · {{ slot.m.title }}</span>
-          <b class="podium-value">{{ sortBy === 'contribution' ? fmtNum(slot.m.contribution) : fmtNum(slot.m.power) }}</b>
-          <small class="podium-label">{{ sortBy === 'contribution' ? '宗门贡献' : '战力' }}</small>
+          <b class="podium-value">{{ boardValue(slot.m) }}</b>
+          <small class="podium-label">{{ boardLabel }}</small>
         </div>
       </section>
 
@@ -181,10 +179,9 @@
               <p>{{ m.hall }} · 入宗 {{ fmtDate(m.createTime) }}</p>
             </div>
             <span class="realm-pill" :class="realmClass(m.realm)">{{ m.realmFull || m.realm }}</span>
-            <span class="tier-tag" :class="'t-' + m.tier">{{ m.tierLabel }}</span>
             <div class="rank-nums">
-              <span class="power" :class="{ strong: sortBy === 'power' }">战力 {{ fmtNum(m.power) }}</span>
-              <span class="contrib" :class="{ strong: sortBy === 'contribution' }">贡献 {{ fmtNum(m.contribution) }}</span>
+              <span class="power" :class="{ strong: sortBy === 'power' && tier !== 'disciple' }">战力 {{ fmtNum(m.power) }}</span>
+              <span class="contrib" :class="{ strong: sortBy === 'contribution' && tier !== 'disciple' }">贡献 {{ fmtNum(m.contribution) }}</span>
             </div>
           </li>
         </ul>
@@ -200,14 +197,14 @@ import { computed, onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import { fetchHallStats, fetchRank } from '../api/sect'
-import { ELDER_MIN_REALM, REALMS, STAGES, TIERS, realmClass, tierOf } from '../utils/realm'
+import { ELDER_MIN_REALM, REALMS, STAGES, realmClass, tierOf } from '../utils/realm'
 
 /** 身份展示顺序（越尊贵越靠前），未在表内的按名称排后面 */
-const GRADE_ORDER = ['宗主', '副宗主', '太上长老', '内门长老', '外门长老', '执法长老',
+const GRADE_ORDER = ['魔尊', '副宗主', '太上长老', '内门长老', '外门长老', '执法长老',
   '丹殿长老', '内务长老', '堂主', '长老', '圣子', '圣女', '真传弟子', '首席弟子',
   '内门弟子', '外门弟子', '记名弟子', '本座']
 const GRADE_ICON = {
-  宗主: '👑', 副宗主: '🌙', 太上长老: '🕊️', 内门长老: '⭐', 外门长老: '🔯',
+  魔尊: '👑', 副宗主: '🌙', 太上长老: '🕊️', 内门长老: '⭐', 外门长老: '🔯',
   圣子: '☀️', 圣女: '🌸', 真传弟子: '🗡️', 内门弟子: '⚔️', 外门弟子: '🛡️',
   记名弟子: '📿', 本座: '🧙'
 }
@@ -235,8 +232,8 @@ const error = ref('')
 const tierName = computed(() => tier.value === 'elder' ? '长老榜' : '弟子榜')
 const tierDesc = computed(() =>
   tier.value === 'elder'
-    ? '宗主执尊，长老治宗 · 太上长老 / 内门长老 / 外门长老'
-    : '圣子圣女领衔，真传弟子蓄势 · 内外门弟子皆在此列')
+    ? '魔尊执尊，长老治宗 · 太上长老 / 内门长老 / 外门长老 · 按战力/贡献排位'
+    : '圣子圣女领衔，真传弟子蓄势 · 内外门弟子皆在此列 · 按修为排位')
 
 const elderCount = computed(() => allMembers.value.filter(m => m.elder).length)
 const discipleCount = computed(() => allMembers.value.filter(m => !m.elder).length)
@@ -264,7 +261,7 @@ const filteredList = computed(() => {
     if (activeGrade.value && grade !== activeGrade.value) return false
     if (activeHall.value && m.hall !== activeHall.value) return false
     if (!kw) return true
-    return [m.name, m.realm, m.realmFull, m.stage, m.tierLabel, m.title, m.hall]
+    return [m.name, m.realm, m.realmFull, m.stage, m.title, m.hall]
       .some(v => String(v || '').toLowerCase().includes(kw))
   })
 })
@@ -282,17 +279,28 @@ const myAllEntry = computed(() => allMembers.value.find(m => m.me) || null)
 const myRank = computed(() => members.value.findIndex(m => m.me) + 1)
 const myAllRank = computed(() => allMembers.value.findIndex(m => m.me) + 1)
 
-/** 距上一名的差距（按当前榜单维度） */
+/** 距上一名的差距：弟子榜比修为境界，长老榜按战力/贡献差额 */
 const gapText = computed(() => {
   if (!myEntry.value) return ''
   if (myRank.value <= 1) return '已登顶本榜，后来者皆在脚下'
   const ahead = members.value[myRank.value - 2]
   if (!ahead) return ''
+  if (tier.value === 'disciple') {
+    return `距上一位「${ahead.name}」（${ahead.realmFull || ahead.realm}）尚差一线修为`
+  }
   const key = sortBy.value === 'contribution' ? 'contribution' : 'power'
   const label = key === 'contribution' ? '贡献' : '战力'
   const diff = Math.max(0, Number(ahead[key] || 0) - Number(myEntry.value[key] || 0))
   return `距上一位「${ahead.name}」还差 ${fmtNum(diff)} ${label}`
 })
+
+/** 领奖台主数值：弟子榜显示修为境界，其余榜显示战力/贡献 */
+function boardValue(m) {
+  if (tier.value === 'disciple') return m.realmFull || m.realm || '—'
+  return sortBy.value === 'contribution' ? fmtNum(m.contribution) : fmtNum(m.power)
+}
+const boardLabel = computed(() =>
+  tier.value === 'disciple' ? '修为境界' : (sortBy.value === 'contribution' ? '宗门贡献' : '战力'))
 
 onMounted(() => load())
 
@@ -549,6 +557,17 @@ function fmtDate(s) {
   transition: color .18s, background .18s;
 }
 .tier-switch button small { font-size: 10px; opacity: .75; letter-spacing: 0; }
+.board-fixed {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 18px;
+  color: #f7e9c4;
+  font-size: 13px;
+  letter-spacing: 2px;
+  border-radius: 999px;
+  background: rgba(140, 15, 29, .35);
+  border: 1px solid var(--gold);
+}
 .tier-switch button.active,
 .board-switch button.active {
   color: #f7e9c4;
@@ -585,33 +604,12 @@ function fmtDate(s) {
 .refresh-btn:hover { border-color: var(--gold); }
 .refresh-btn:disabled { opacity: .5; cursor: wait; }
 
-/* ===== 境界层级图例 ===== */
-.tier-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 32px 16px;
-}
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(10, 7, 15, .6);
-  font-size: 11px;
-  color: var(--text-soft);
-}
-.legend-item i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.legend-item small { color: var(--text-dim); letter-spacing: 0; }
-
 /* 小层次图例 */
 .stage-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 16px;
-  margin: -6px 32px 16px;
+  margin: 0 32px 16px;
   padding: 10px 14px;
   border: 1px dashed rgba(196, 154, 92, .28);
   border-radius: 10px;
@@ -648,17 +646,6 @@ function fmtDate(s) {
 }
 .grade-tab small { font-size: 10px; color: var(--text-dim); letter-spacing: 0; }
 .grade-tab.active small { color: rgba(247, 233, 196, .8); }
-
-/* 层级标签配色 */
-.t-disciple { color: #9fb3a8; }
-.t-trueDisciple { color: #9fd0ff; }
-.t-elder { color: #ffd76a; }
-.t-supreme {
-  color: #ffd76a;
-  border-color: var(--gold);
-  background: linear-gradient(135deg, rgba(140, 15, 29, .7), rgba(200, 16, 46, .5));
-  box-shadow: 0 0 10px rgba(200, 16, 46, .35);
-}
 
 /* ===== 前三领奖台 ===== */
 .podium {
@@ -833,15 +820,6 @@ function fmtDate(s) {
 .r-huashen { color: #b48aff; border-color: rgba(180, 138, 255, .4); }
 .r-low { color: var(--text-soft); }
 
-.tier-tag {
-  padding: 2px 8px;
-  font-size: 11px;
-  letter-spacing: 1px;
-  border: 1px solid rgba(196, 154, 92, .3);
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-
 .rank-nums { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
 .power { font-size: 13px; letter-spacing: 1px; color: rgba(226, 58, 78, .9); }
 .contrib { font-size: 11px; letter-spacing: 1px; color: rgba(212, 175, 55, .6); }
@@ -869,8 +847,7 @@ function fmtDate(s) {
   .my-rank { margin: 0 18px 14px; }
   .my-seal { width: 70px; min-width: 70px; height: 70px; }
   .toolbar { margin: 0 18px 10px; }
-  .tier-legend { margin: 0 18px 14px; }
-  .stage-legend { margin: -6px 18px 14px; }
+  .stage-legend { margin: 0 18px 14px; }
   .grade-wrap { padding: 0 18px 6px; }
   .search-input { width: 150px; }
   .podium { margin: 0 18px 18px; padding: 14px 0 0; gap: 6px; }
@@ -882,6 +859,5 @@ function fmtDate(s) {
   .tabs-wrap { padding: 0 18px 20px; }
   .rank-main p { display: none; }
   .contrib { display: none; }
-  .tier-tag { display: none; }
 }
 </style>

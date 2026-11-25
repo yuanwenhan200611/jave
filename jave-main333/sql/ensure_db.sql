@@ -188,15 +188,15 @@ PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 INSERT INTO `sect_member` (`name`, `realm`, `stage`, `title`, `hall`, `power`, `contribution`, `icon`)
 SELECT t.name, t.realm, t.stage, t.title, t.hall, t.power, t.contribution, t.icon
 FROM (
-  SELECT '血无常' AS name, '魔尊' AS realm, '九重' AS stage, '宗主' AS title, '主殿' AS hall, 9999999 AS power, 999999 AS contribution, '😈' AS icon
+  SELECT '血无常' AS name, '渡劫' AS realm, '九劫' AS stage, '魔尊' AS title, '主殿' AS hall, 9999999 AS power, 999999 AS contribution, '😈' AS icon
   UNION ALL SELECT '阎罗娘子', '渡劫', '九劫', '副宗主', '血煞堂', 8800000, 620000, '🌙'
   UNION ALL SELECT '玄冥太上', '渡劫', '五劫', '太上长老', '主殿', 8200000, 580000, '🌌'
   UNION ALL SELECT '枯荣太上', '渡劫', '三劫', '太上长老', '主殿', 7900000, 560000, '🍂'
-  UNION ALL SELECT '白骨真人', '渡劫', '七劫', '执法长老', '执法堂', 7600000, 540000, '💀'
+  UNION ALL SELECT '白骨真人', '渡劫', '七劫', '执法长老', '执法堂', 8500000, 540000, '💀'
   UNION ALL SELECT '无相太上', '渡劫', '一劫', '太上长老', '主殿', 7500000, 530000, '🫥'
   UNION ALL SELECT '血河太上', '大乘', '巅峰', '太上长老', '血煞堂', 6800000, 480000, '🩸'
   UNION ALL SELECT '天枢太上', '大乘', '后期', '太上长老', '千机堂', 6500000, 460000, '⭐'
-  UNION ALL SELECT '千面魔君', '大乘', '圆满', '内务长老', '千机堂', 5900000, 410000, '🎭'
+  UNION ALL SELECT '千面魔君', '大乘', '后期', '内务长老', '千机堂', 5900000, 410000, '🎭'
   UNION ALL SELECT '幽冥子', '大乘', '后期', '长老', '幽冥堂', 5200000, 380000, '🌑'
   UNION ALL SELECT '阴无极', '大乘', '中期', '内门长老', '幽冥堂', 4800000, 350000, '🌑'
   UNION ALL SELECT '厉青锋', '大乘', '初期', '内门长老', '执法堂', 4500000, 330000, '⚔️'
@@ -208,12 +208,12 @@ FROM (
   UNION ALL SELECT '南宫影', '合体', '初期', '内门长老', '执法堂', 3700000, 275000, '🌘'
   UNION ALL SELECT '西门朔', '合体', '初期', '内门长老', '千机堂', 3650000, 270000, '🌪️'
   UNION ALL SELECT '北堂幽', '合体', '初期', '内门长老', '幽冥堂', 3600000, 265000, '🕯️'
-  UNION ALL SELECT '玉面罗刹', '合体', '巅峰', '堂主', '血煞堂', 3600000, 260000, '🌺'
-  UNION ALL SELECT '赤炎老祖', '合体', '后期', '丹殿长老', '炼丹堂', 3300000, 245000, '🔥'
+  UNION ALL SELECT '玉面罗刹', '合体', '巅峰', '堂主', '血煞堂', 4150000, 260000, '🌺'
+  UNION ALL SELECT '赤炎老祖', '合体', '后期', '丹殿长老', '炼丹堂', 3950000, 245000, '🔥'
   UNION ALL SELECT '噬魂叟', '炼虚', '圆满', '长老', '幽冥堂', 2100000, 180000, '👁️'
+  UNION ALL SELECT '铁面判', '炼虚', '圆满', '外门长老', '执法堂', 1850000, 155000, '🛡️'
+  UNION ALL SELECT '鬼手翁', '炼虚', '圆满', '外门长老', '炼丹堂', 1820000, 152000, '🖐️'
   UNION ALL SELECT '墨鸦', '炼虚', '大成', '首席弟子', '执法堂', 1800000, 160000, '🐦'
-  UNION ALL SELECT '铁面判', '炼虚', '圆满', '外门长老', '执法堂', 1750000, 155000, '🛡️'
-  UNION ALL SELECT '鬼手翁', '炼虚', '圆满', '外门长老', '炼丹堂', 1720000, 152000, '🖐️'
   UNION ALL SELECT '枯木禅', '炼虚', '大成', '外门长老', '主殿', 1700000, 150000, '🪵'
   UNION ALL SELECT '血煞尊', '炼虚', '大成', '外门长老', '血煞堂', 1680000, 148000, '🩸'
   UNION ALL SELECT '幽鬼婆', '炼虚', '大成', '外门长老', '幽冥堂', 1650000, 145000, '👵'
@@ -229,9 +229,9 @@ FROM (
   UNION ALL SELECT '吴钩叟', '炼虚', '小成', '外门长老', '千机堂', 1440000, 120000, '🗡️'
   UNION ALL SELECT '凌天骄', '化神', '巅峰', '圣子', '主殿', 980000, 120000, '🔥'
   UNION ALL SELECT '冷月心', '化神', '巅峰', '圣女', '主殿', 960000, 115000, '🌙'
-  UNION ALL SELECT '苏九黎', '化神', '巅峰', '内门弟子', '千机堂', 900000, 95000, '🦋'
+  UNION ALL SELECT '苏九黎', '化神', '巅峰', '真传弟子', '千机堂', 900000, 95000, '🦋'
   UNION ALL SELECT '顾长歌', '化神', '中期', '真传弟子', '千机堂', 880000, 92000, '🎼'
-  UNION ALL SELECT '谢无咎', '化神', '后期', '外门弟子', '血煞堂', 850000, 88000, '⚔️'
+  UNION ALL SELECT '谢无咎', '化神', '后期', '真传弟子', '血煞堂', 890000, 88000, '⚔️'
   UNION ALL SELECT '沈傲霜', '化神', '初期', '真传弟子', '执法堂', 830000, 90000, '❄️'
   UNION ALL SELECT '白夜行', '元婴', '巅峰', '真传弟子', '幽冥堂', 800000, 85000, '🌑'
   UNION ALL SELECT '韩立雪', '元婴', '巅峰', '真传弟子', '炼丹堂', 780000, 82000, '❄️'
@@ -249,9 +249,9 @@ FROM (
   UNION ALL SELECT '钟离昧', '金丹', '中期', '内门弟子', '幽冥堂', 320000, 35000, '🔔'
   UNION ALL SELECT '独孤残', '金丹', '初期', '内门弟子', '血煞堂', 300000, 32000, '🦾'
   UNION ALL SELECT '南飞雁', '金丹', '初期', '内门弟子', '主殿', 280000, 30000, '🪶'
-  UNION ALL SELECT '雷小斧', '金丹', '初期', '外门弟子', '血煞堂', 270000, 29000, '🪓'
-  UNION ALL SELECT '苏小媚', '金丹', '初期', '外门弟子', '千机堂', 265000, 28500, '🦊'
-  UNION ALL SELECT '阿蛮', '金丹', '中期', '记名弟子', '炼丹堂', 260000, 30000, '🍖'
+  UNION ALL SELECT '雷小斧', '金丹', '初期', '内门弟子', '血煞堂', 270000, 29000, '🪓'
+  UNION ALL SELECT '苏小媚', '金丹', '初期', '内门弟子', '千机堂', 265000, 28500, '🦊'
+  UNION ALL SELECT '阿蛮', '金丹', '中期', '内门弟子', '炼丹堂', 310000, 30000, '🍖'
   UNION ALL SELECT '铁牛', '筑基', '巅峰', '外门弟子', '血煞堂', 90000, 12000, '🐂'
   UNION ALL SELECT '王二牛', '筑基', '后期', '外门弟子', '执法堂', 85000, 11000, '🐃'
   UNION ALL SELECT '张小乙', '筑基', '中期', '外门弟子', '千机堂', 80000, 10000, '📜'
@@ -271,7 +271,7 @@ WHERE NOT EXISTS (SELECT 1 FROM `sect_member` x WHERE x.name = t.name);
 
 -- 3.1 老库补层次：按道号回填 stage（幂等，重复执行值不变）
 UPDATE `sect_member` SET `stage` = CASE `name`
-    WHEN '血无常' THEN '九重'
+    WHEN '血无常' THEN '九劫'
     WHEN '阎罗娘子' THEN '九劫'
     WHEN '玄冥太上' THEN '五劫'
     WHEN '枯荣太上' THEN '三劫'
@@ -279,7 +279,7 @@ UPDATE `sect_member` SET `stage` = CASE `name`
     WHEN '无相太上' THEN '一劫'
     WHEN '血河太上' THEN '巅峰'
     WHEN '天枢太上' THEN '后期'
-    WHEN '千面魔君' THEN '圆满'
+    WHEN '千面魔君' THEN '后期'
     WHEN '幽冥子' THEN '后期'
     WHEN '阴无极' THEN '中期'
     WHEN '厉青锋' THEN '初期'
@@ -351,6 +351,40 @@ UPDATE `sect_member` SET `stage` = CASE `name`
     WHEN '卫小刀' THEN '三层'
 END
 WHERE `name` IN ('血无常', '阎罗娘子', '玄冥太上', '枯荣太上', '白骨真人', '无相太上', '血河太上', '天枢太上', '千面魔君', '幽冥子', '阴无极', '厉青锋', '慕容寒', '姬无夜', '司徒冥', '上官烬', '东方曜', '南宫影', '西门朔', '北堂幽', '玉面罗刹', '赤炎老祖', '噬魂叟', '墨鸦', '铁面判', '鬼手翁', '枯木禅', '血煞尊', '幽鬼婆', '燕无归', '石敢当', '雷震子', '毒娘子', '赵无情', '钱通神', '孙大隐', '郑铁山', '周五邪', '吴钩叟', '凌天骄', '冷月心', '苏九黎', '顾长歌', '谢无咎', '沈傲霜', '白夜行', '韩立雪', '叶无痕', '楚天阔', '段惊鸿', '唐不哭', '花非花', '秦无焰', '林青衣', '陆斩月', '萧别离', '慕青鸾', '厉飞雨', '钟离昧', '独孤残', '南飞雁', '雷小斧', '苏小媚', '阿蛮', '铁牛', '王二牛', '张小乙', '陈三炮', '刘四刀', '赵五毒', '孙六指', '周七煞', '吴小宝', '郑大钱', '冯二狗', '陈小花', '褚小石', '卫小刀');
+
+-- 3.2 身份/境界对齐（幂等，可反复执行；老库已存在的道友由这里纠正）----
+--     口径：魔尊仅作宗主称号，修为渡劫九劫；弟子身份与修为一一对应：
+--     炼气=记名弟子 / 筑基=外门弟子 / 金丹=内门弟子 / 元婴·化神=真传弟子
+UPDATE `sect_member` SET
+  `realm` = CASE `name` WHEN '血无常' THEN '渡劫' ELSE `realm` END,
+  `stage` = CASE `name` WHEN '血无常' THEN '九劫' ELSE `stage` END,
+  `title` = CASE `name`
+    WHEN '血无常' THEN '魔尊'
+    WHEN '苏九黎' THEN '真传弟子'
+    WHEN '谢无咎' THEN '真传弟子'
+    WHEN '雷小斧' THEN '内门弟子'
+    WHEN '苏小媚' THEN '内门弟子'
+    WHEN '阿蛮'   THEN '内门弟子'
+    ELSE `title` END
+WHERE `name` IN ('血无常', '苏九黎', '谢无咎', '雷小斧', '苏小媚', '阿蛮');
+
+-- 3.3 战力与境界层次对齐（幂等；修正「低层次战力反超高层次」的倒挂）----
+--     口径：同一大境界内，小层次越高战力越高；跨境界整体递增。
+--     大乘层次只有 初期/中期/后期/巅峰，无「圆满」。
+UPDATE `sect_member` SET
+  `stage` = CASE `name` WHEN '千面魔君' THEN '后期' ELSE `stage` END,
+  `power` = CASE `name`
+    WHEN '阿蛮'     THEN 310000
+    WHEN '谢无咎'   THEN 890000
+    WHEN '铁面判'   THEN 1850000
+    WHEN '鬼手翁'   THEN 1820000
+    WHEN '赤炎老祖' THEN 3950000
+    WHEN '玉面罗刹' THEN 4150000
+    WHEN '千面魔君' THEN 5900000
+    WHEN '白骨真人' THEN 8500000
+    ELSE `power` END
+WHERE `name` IN ('阿蛮', '谢无咎', '铁面判', '鬼手翁', '赤炎老祖',
+                 '玉面罗刹', '千面魔君', '白骨真人');
 
 INSERT INTO `forum_post` (`author`, `title`, `content`, `views`, `likes`)
 SELECT t.author, t.title, t.content, t.views, t.likes
