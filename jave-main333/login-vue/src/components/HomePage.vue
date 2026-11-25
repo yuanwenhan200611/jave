@@ -66,7 +66,7 @@
         <div class="mini-stats">
           <div class="mini-stat">
             <span class="mini-label">境界</span>
-            <b>{{ profileInfo.realm || '炼气' }}</b>
+            <b>{{ myFullRealm }}</b>
             <small>修为 {{ myStats.cultivation || 0 }}</small>
           </div>
           <div class="mini-stat">
@@ -270,6 +270,7 @@ import {
   fetchRelatedItems,
   searchItems
 } from '../api/home'
+import { fullRealm, stageOf } from '../utils/realm'
 
 const props = defineProps({
   username: {
@@ -332,6 +333,11 @@ const totalItems = ref(0)
 // 个人修行速览（复用洞府接口，失败时静默降级为 0，不影响首页浏览）
 const profileInfo = ref({})
 const myStats = ref({})
+
+/** 完整境界：大境界 + 按修为折算的小层次 */
+const myFullRealm = computed(() =>
+  fullRealm(profileInfo.value.realm || '炼气', stageOf(profileInfo.value.realm || '炼气', myStats.value.cultivation || 0))
+)
 
 // 宗门速达：与 SectNav 的视图 key 保持一致
 const quickEntries = [

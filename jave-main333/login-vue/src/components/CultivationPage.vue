@@ -15,7 +15,8 @@
     <section class="overview" v-if="info">
       <div class="ov-left">
         <div class="ov-realm-row">
-          <span class="ov-realm-badge">{{ info.realm }}</span>
+          <span class="ov-realm-badge" :class="realmClass(info.realm)">{{ infoFullRealm }}</span>
+          <span v-if="stageInfo" class="ov-stage">层次 {{ stageInfo.index }}/{{ stageInfo.total }}</span>
           <span class="ov-label">当前修为</span>
           <span class="ov-cultivation">{{ formatNum(info.cultivation) }}</span>
         </div>
@@ -128,7 +129,7 @@
           ✦ 突破 ✦
           <p>
             咔——道基之上裂开一道缝隙，磅礴魔气倒灌而入！<br>
-            你一步跨入【{{ result.toRealm }}】，从此天地更大了。
+            你一步跨入【{{ fullRealm(result.toRealm, stageOf(result.toRealm, result.cultivation)) }}】，从此天地更大了。
           </p>
         </div>
 
@@ -136,7 +137,7 @@
 
         <div class="result-after">
           <div><small>当前修为</small><b>{{ formatNum(result.cultivation) }}</b></div>
-          <div><small>境界</small><b>{{ result.realm }}</b></div>
+          <div><small>境界</small><b>{{ resultFullRealm }}</b></div>
           <div><small>灵石余</small><b>{{ formatNum(result.stonesBalance) }}</b></div>
           <div><small>贡献余</small><b>{{ formatNum(result.contributionBalance) }}</b></div>
         </div>
@@ -150,6 +151,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import { fetchCultivationInfo, practice } from '../api/cultivation'
+import { fullRealm, realmClass, stagesOf, stageOf } from '../utils/realm'
 
 const props = defineProps({
   username: { type: String, default: '道友' }
@@ -171,6 +173,26 @@ const result = ref(null)
 const cooldownEnds = ref({})
 const now = ref(Date.now())
 let timer = null
+
+/** 当前完整境界（大境界 + 按修为折算的小层次） */
+const infoFullRealm = computed(() =>
+  info.value ? fullRealm(info.value.realm, stageOf(info.value.realm, info.value.cultivation)) : ''
+)
+
+/** 当前小层次在所属大境界里的进度（用于展示「炼气七层 / 九层」这类进度） */
+const stageInfo = computed(() => {
+  const d = info.value
+  if (!d) return null
+  const list = stagesOf(d.realm)
+  if (!list.length) return null
+  const stage = stageOf(d.realm, d.cultivation)
+  return { name: stage, index: list.indexOf(stage) + 1, total: list.length }
+})
+
+/** 修炼结果里的完整境界 */
+const resultFullRealm = computed(() =>
+  result.value ? fullRealm(result.value.realm, stageOf(result.value.realm, result.value.cultivation)) : ''
+)
 
 const progressPct = computed(() => {
   const d = info.value
@@ -351,6 +373,16 @@ function shortTime(t) {
   background: linear-gradient(135deg, #8c0f1d, #c8102e);
   border: 1px solid rgba(212, 175, 55, .55);
   box-shadow: 0 0 12px rgba(200, 16, 46, .4);
+}
+
+.ov-stage {
+  padding: 2px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(247, 233, 196, .9);
+  border: 1px dashed rgba(212, 175, 55, .5);
+  background: rgba(140, 15, 29, .35);
 }
 
 .ov-label { font-size: 12px; letter-spacing: 2px; color: var(--text-soft); }

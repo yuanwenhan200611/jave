@@ -39,7 +39,30 @@ jave-main/
   - 功法阁 `SkillPage.vue`：复用 /api/home/search 按功法分类检索，分堂 tab = 功法的二级分类；
   - 秘境 `SecretPage.vue`：「随机探秘」走 POST /api/secret/roam（天机引路费 200 贡献值，每次必收；旧的免费 /api/sect/explore 已下线）；
     随机探秘奖励走寒酸口径（45% 空手而归），秘境永不产出贡献值；指定秘境破界门票每次照收，无「已开辟免费重游」；
-  - 宗门榜 `RankPage.vue`：GET /api/sect/rank + /api/sect/halls（sect_member 表，战力降序，前 3 名特殊高亮）；
+  - 宗门榜 `RankPage.vue`（2026-11-25 完善）：GET /api/sect/rank?username=&sortBy=power|contribution&tier=elder|disciple|all
+    + GET /api/sect/halls?username=&tier=（sect_member 表 NPC + **当前登录玩家实时折算**，战力/贡献双榜 ×
+    **长老榜/弟子榜双辈分榜**、前三领奖台、「我的名次」（本榜内）+ 距上一名差距、**身份筛选 chips**、
+    境界层级 + 小层次图例、道号/境界/层次/身份/堂口搜索、刷新按钮）。默认进长老榜；玩家境界不够时显示「去弟子榜」引导。
+    → 玩家**不写 sect_member 表**（避免污染种子数据）：SectService.buildMeEntry 复用 ProfileService.getProfile 取数，
+    战力 = 修为×10 + 已习功法数×2000 + 已完成任务数×1000 + 10000 底薪，贡献 = 洞府口径的累计贡献值；
+    VO 为 `vo/RankEntryVO`（多带 me/cultivation/username/tier/tierLabel/elder/stage/realmFull 字段）。改数值只动 SectService 顶部 4 个常量。
+  - **境界分层统一口径（2026-11-25）**：后端 `util/RealmTier.java`、前端 `src/utils/realm.js` 两份同源定义。
+    十大境界不变：炼气/筑基/金丹=弟子境，元婴/化神=真传境，炼虚/合体/大乘/渡劫=长老境，魔尊=至尊境。
+    分榜规则：**炼虚及以上进长老榜**（长老境+至尊境），化神及以下进弟子榜。
+    **每个大境界再分小层次（STAGES）**：炼气一层~九层；筑基/金丹/元婴/化神/合体/大乘 初期/中期/后期/巅峰；
+    炼虚 小成/大成/圆满/巅峰；渡劫 一劫/三劫/五劫/七劫/九劫；魔尊 一重/三重/五重/七重/九重。
+    修为门槛 REALM_THRESHOLD 也在 RealmTier（CultivationService 已改为引用），`stageOf(realm,cultivation)`
+    按境界区间折算层次，`fullRealm()` 拼完整境界（如「炼虚小成」）。sect_member 加 `stage` 列（幂等加列见两个 sql）。
+    CultivationService.REALMS、QuestService.REALM_ORDER、ProfileService.REALMS、洞府境界下拉都已改为引用统一定义，
+    **不要再各处硬写境界数组**。改境界顺序/分层/层次只动这两份工具文件，且必须前后端同步。
+    → 展示完整境界的页面（RankPage/ProfilePage/HomePage/CultivationPage/ForumPage）统一用
+    `fullRealm(realm, stageOf(realm, cultivation))`，玩家没有独立 stage 字段，一律按修为现算；
+    **注意 fullRealm 第二参数是层次字符串不是修为数**，曾因传成 cultivation 导致只显示大境界，已修。
+  - **宗门人物种子（2026-11-25 扩充至 78 人）**：`sql/seed_sect.sql` + `sql/ensure_db.sql` 同步维护（判重插入，可反复执行）。
+    长老榜 39：宗主/副宗主各1、太上长老5、内门长老10、外门长老15、执法/内务/丹殿长老/堂主/长老/首席弟子若干；
+    弟子榜 39：圣子1、圣女1、真传弟子10、内门弟子9、外门弟子11、记名弟子7（+ admin 玩家实时折算入榜 → 40）。
+    加新人只改这两份 sql 的 INSERT UNION ALL 列（含 stage），改完手动 `mysql < sql/seed_sect.sql` 施用到库。
+    前端身份筛选 GRADE_ORDER/GRADE_ICON 在 RankPage.vue，新身份记得补进去（否则图标回落为「·」）。
   - 血辩台 `ForumPage.vue`（原论道，2026-11-18 魔宗化改造）：GET /api/forum/posts（username 可选，返回 incensedIds/counteredIds）
     + POST /api/forum/posts（开坛讲道：20 灵石设坛，修为 +60~150，60s 调息）
     + POST /api/forum/posts/{id}/incense（香火供奉：10 灵石，自己 +15~40 修为，帖主 +5 贡献分成）

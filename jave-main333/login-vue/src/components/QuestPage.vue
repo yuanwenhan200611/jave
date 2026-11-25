@@ -167,7 +167,11 @@
           <label class="field">
             <span>修为门槛</span>
             <select v-model="form.minRealm">
-              <option v-for="r in REALMS" :key="r" :value="r">{{ r }} 以上</option>
+              <optgroup v-for="g in REALM_OPTIONS" :key="g.realm" :label="g.realm">
+                <option v-for="st in g.stages" :key="g.realm + st" :value="g.realm + st">
+                  {{ g.realm }}{{ st }} 以上
+                </option>
+              </optgroup>
             </select>
           </label>
           <label class="field">
@@ -198,6 +202,7 @@
 import { computed, onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
+import { REALM_OPTIONS, fullRealm, realmWeight, stageOf } from '../utils/realm'
 import {
   abandonQuest,
   acceptQuest,
@@ -218,7 +223,6 @@ const emit = defineEmits(['nav', 'logout'])
 
 const { showToast } = useToast()
 
-const REALMS = ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '魔尊']
 const DIFFICULTIES = ['简单', '普通', '困难', '地狱']
 const CATEGORIES = ['斩妖', '夺宝', '护送', '炼丹', '寻物', '戒律', '其它']
 
@@ -249,7 +253,7 @@ const pageSize = 8
 const pages = ref(0)
 
 // 我的境界（判断能否接取）
-const myRealmIdx = ref(0)
+const myRealmWeight = ref(0)
 
 // 我的任务牌（与洞府联动）
 const myList = ref([])
@@ -284,8 +288,8 @@ function isOngoing(questId) {
 function acceptState(item) {
   if (isOngoing(item.id)) return 'ok'
   if (item.full) return 'full'
-  const need = REALMS.indexOf(item.minRealm || '炼气')
-  if (need > myRealmIdx.value) return 'realm'
+  const need = realmWeight(item.minRealm || '炼气')
+  if (need > myRealmWeight.value) return 'realm'
   return 'ok'
 }
 
@@ -329,9 +333,10 @@ async function loadRealm() {
   try {
     const data = await fetchProfileRealm(props.username)
     const realm = data?.profile?.realm || '炼气'
-    myRealmIdx.value = Math.max(0, REALMS.indexOf(realm))
+    const cultivation = data?.stats?.cultivation || 0
+    myRealmWeight.value = realmWeight(fullRealm(realm, stageOf(realm, cultivation)))
   } catch {
-    myRealmIdx.value = 0
+    myRealmWeight.value = 0
   }
 }
 

@@ -13,7 +13,7 @@
 
     <!-- 我的道行 -->
     <section class="self-bar">
-      <span class="self-item"><i>境界</i><b>{{ me.realm || '炼气' }}</b></span>
+      <span class="self-item"><i>境界</i><b>{{ meFullRealm }}</b></span>
       <span class="self-item"><i>修为</i><b>{{ fmtNum(me.cultivation) }}</b></span>
       <span class="self-item"><i>灵石</i><b>{{ fmtNum(me.stonesBalance) }}</b></span>
       <span class="self-item"><i>贡献</i><b>{{ fmtNum(me.contributionBalance) }}</b></span>
@@ -139,7 +139,7 @@
         </p>
         <p class="result-story">{{ result.story }}</p>
         <p class="result-now">
-          今修为 <b>{{ fmtNum(result.cultivation) }}</b> · 境界 <b>{{ result.realm }}</b>
+          今修为 <b>{{ fmtNum(result.cultivation) }}</b> · 境界 <b>{{ resultFullRealm }}</b>
         </p>
         <p v-if="result.breakthrough" class="result-break">✦ 境界突破：{{ result.fromRealm }} → {{ result.toRealm }} ✦</p>
       </div>
@@ -155,6 +155,7 @@ import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import { counterPost, createPost, fetchPosts, incensePost } from '../api/forum'
 import { fetchCultivationInfo } from '../api/cultivation'
+import { fullRealm, stageOf } from '../utils/realm'
 
 const props = defineProps({
   username: { type: String, default: '道友' }
@@ -179,6 +180,17 @@ const pages = ref(0)
 
 // 我的道行（修为/境界/灵石/贡献）
 const me = ref({})
+
+/** 完整境界（大境界 + 按修为折算的小层次） */
+const meFullRealm = computed(() =>
+  fullRealm(me.value.realm || '炼气', stageOf(me.value.realm || '炼气', me.value.cultivation || 0))
+)
+/** 修炼结果完整境界 */
+const resultFullRealm = computed(() =>
+  result.value
+    ? fullRealm(result.value.realm || '炼气', stageOf(result.value.realm || '炼气', result.value.cultivation || 0))
+    : ''
+)
 
 // 动作状态：本页内供奉过 / 驳过的帖子 id
 const incensedIds = ref(new Set())

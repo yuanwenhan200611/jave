@@ -22,6 +22,7 @@ import com.fenglin.springboottest.mapper.UserProfileMapper;
 import com.fenglin.springboottest.mapper.UserQuestMapper;
 import com.fenglin.springboottest.mapper.UserSecretMapper;
 import com.fenglin.springboottest.mapper.UserSkillMapper;
+import com.fenglin.springboottest.util.RealmTier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -44,8 +45,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ProfileService {
 
-    private static final Set<String> REALMS = Set.of(
-            "炼气", "筑基", "金丹", "元婴", "化神", "炼虚", "合体", "大乘", "渡劫", "魔尊");
+    private static final Set<String> REALMS = Set.copyOf(RealmTier.REALMS);
     private static final Set<String> HALLS = Set.of(
             "主殿", "血煞堂", "幽冥堂", "千机堂", "执法堂", "炼丹堂");
     private static final int MAX_NICKNAME = 20;

@@ -11,6 +11,7 @@ import com.fenglin.springboottest.mapper.CultivationLogMapper;
 import com.fenglin.springboottest.mapper.ForumIncomeMapper;
 import com.fenglin.springboottest.mapper.UserProfileMapper;
 import com.fenglin.springboottest.mapper.UserQuestMapper;
+import com.fenglin.springboottest.util.RealmTier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,14 +44,11 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class CultivationService {
 
-    /** 十大境界（由低到高），与 QuestService.REALM_ORDER 保持一致 */
-    private static final List<String> REALMS = List.of(
-            "炼气", "筑基", "金丹", "元婴", "化神", "炼虚", "合体", "大乘", "渡劫", "魔尊");
+    /** 十大境界（由低到高），统一取自 RealmTier，与任务/档案/榜单同源 */
+    private static final List<String> REALMS = RealmTier.REALMS;
 
-    /** 各境界修为门槛（下标对应 REALMS）：达到门槛即晋升该境界 */
-    private static final long[] REALM_THRESHOLD = {
-            0, 1000, 5000, 15000, 40000, 100000, 250000, 600000, 1500000, 5000000
-    };
+    /** 各境界修为门槛，统一取自 RealmTier（与境界层次折算同源） */
+    private static final long[] REALM_THRESHOLD = RealmTier.REALM_THRESHOLD;
 
     private static final int MAX_LIST = 20;
 

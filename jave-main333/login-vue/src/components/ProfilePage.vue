@@ -23,7 +23,8 @@
         <div class="profile-main">
           <div class="name-line">
             <h2>{{ profile.nickname || username }}</h2>
-            <span class="realm-pill" :class="realmClass(profile.realm)">{{ profile.realm || '炼气' }}</span>
+            <span class="realm-pill" :class="realmClass(profile.realm)">{{ myFullRealm }}</span>
+            <span class="tier-tag">{{ tierLabel(profile.realm) }}</span>
             <span class="hall-tag">{{ profile.hall || '血煞堂' }}</span>
           </div>
           <p class="uname-line">道号 {{ username }} · 入宗 {{ fmtDate(user.createdAt) }}</p>
@@ -49,7 +50,7 @@
           <label class="field">
             <span>境界</span>
             <select v-model="form.realm">
-              <option v-for="r in REALMS" :key="r" :value="r">{{ r }}</option>
+              <option v-for="r in REALMS" :key="r" :value="r">{{ r }} · {{ tierLabel(r) }}</option>
             </select>
           </label>
           <label class="field">
@@ -85,7 +86,7 @@
         </div>
         <div class="stat">
           <b>{{ stats.cultivation || 0 }}<i class="stat-sub">修炼 {{ stats.cultivationPractice || 0 }} 次</i></b>
-          <span>修为（{{ profile.realm || '炼气' }}）</span>
+          <span>修为（{{ myFullRealm }}）</span>
           <small class="stat-link" @click="go('cultivation')">去魔功殿 →</small>
         </div>
         <div class="stat">
@@ -256,10 +257,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import SectNav from './SectNav.vue'
 import { useToast } from '../composables/useToast'
 import { fetchMyPosts, fetchMySearches, fetchProfile, saveProfile } from '../api/profile'
+import { REALMS, fullRealm, realmClass, stageOf, tierLabel } from '../utils/realm'
 import { fetchMyQuests } from '../api/quest'
 import { fetchMySkills } from '../api/skill'
 import { fetchMySecrets, fetchSecretStatus, fetchSecretStorage } from '../api/secret'
@@ -272,7 +274,6 @@ const emit = defineEmits(['nav', 'logout', 'search'])
 
 const { showToast } = useToast()
 
-const REALMS = ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '魔尊']
 const HALLS = ['主殿', '血煞堂', '幽冥堂', '千机堂', '执法堂', '炼丹堂']
 
 const error = ref('')
@@ -285,6 +286,11 @@ const stats = ref({
   cultivation: 0, cultivationPractice: 0, stonesSpent: 0, stonesAvailable: 0,
   marketTradeCount: 0, marketSpent: 0, marketEarned: 0
 })
+
+/** 完整境界：大境界 + 按修为折算的小层次 */
+const myFullRealm = computed(() =>
+  fullRealm(profile.value.realm || '炼气', stageOf(profile.value.realm || '炼气', stats.value.cultivation || 0))
+)
 
 const editing = ref(false)
 const saving = ref(false)
@@ -431,18 +437,6 @@ function fmtTime(s) {
   return s ? String(s).slice(0, 16).replace('T', ' ') : ''
 }
 
-/** 境界配色：与宗门榜保持一致 */
-function realmClass(realm) {
-  switch (realm) {
-    case '魔尊': return 'r-mozun'
-    case '渡劫': return 'r-dujie'
-    case '大乘': return 'r-dacheng'
-    case '合体': return 'r-heti'
-    case '炼虚': return 'r-lianxu'
-    case '化神': return 'r-huashen'
-    default: return 'r-low'
-  }
-}
 </script>
 
 <style scoped>
@@ -580,6 +574,16 @@ function realmClass(realm) {
   color: rgba(212, 175, 55, .8);
   border: 1px dashed rgba(212, 175, 55, .4);
   border-radius: 8px;
+  padding: 2px 8px;
+}
+
+/* 境界层级标签（与宗门榜同源） */
+.tier-tag {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(226, 196, 110, .9);
+  border: 1px solid rgba(212, 175, 55, .4);
+  border-radius: 6px;
   padding: 2px 8px;
 }
 

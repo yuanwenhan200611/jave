@@ -23,14 +23,23 @@ async function request(url, { method = 'GET', body } = {}) {
   return json.data
 }
 
-/** 宗门榜（战力降序） */
-export function fetchRank() {
-  return request('/api/sect/rank')
+/**
+ * 宗门榜：NPC 弟子 + 当前玩家（传 username 时并入排行）
+ * @param {string} [username] 当前登录名，不传则只有 NPC
+ * @param {'power'|'contribution'} [sortBy] 榜单维度，默认战力
+ * @param {'all'|'elder'|'disciple'} [tier] 辈分榜，默认全宗
+ */
+export function fetchRank(username, sortBy = 'power', tier = 'all') {
+  const params = new URLSearchParams({ sortBy, tier })
+  if (username) params.set('username', username)
+  return request(`/api/sect/rank?${params}`)
 }
 
-/** 各堂口人数统计 */
-export function fetchHallStats() {
-  return request('/api/sect/halls')
+/** 各堂口人数统计（与当前榜单同范围） */
+export function fetchHallStats(username, tier = 'all') {
+  const params = new URLSearchParams({ tier })
+  if (username) params.set('username', username)
+  return request(`/api/sect/halls?${params}`)
 }
 
 /* 注：旧的免费探索接口 fetchExplore（/api/sect/explore）已随免费秘境探索一并下线，

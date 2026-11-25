@@ -8,6 +8,7 @@ import com.fenglin.springboottest.entity.UserQuest;
 import com.fenglin.springboottest.mapper.QuestMapper;
 import com.fenglin.springboottest.mapper.UserProfileMapper;
 import com.fenglin.springboottest.mapper.UserQuestMapper;
+import com.fenglin.springboottest.util.RealmTier;
 import com.fenglin.springboottest.vo.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,9 +46,8 @@ public class QuestService {
     private static final Set<String> CATEGORIES = Set.of("斩妖", "夺宝", "护送", "炼丹", "寻物", "戒律", "其它");
     private static final Set<String> QUEST_TYPES = Set.of("sect", "personal");
 
-    /** 境界从低到高：接取任务的修为门槛按此序比较 */
-    public static final List<String> REALM_ORDER = List.of(
-            "炼气", "筑基", "金丹", "元婴", "化神", "炼虚", "合体", "大乘", "渡劫", "魔尊");
+    /** 境界从低到高：接取任务的修为门槛按此序比较（统一取自 RealmTier） */
+    public static final List<String> REALM_ORDER = RealmTier.REALMS;
 
     private static final Map<Integer, String> STATUS_TEXT = Map.of(
             0, "进行中", 1, "已完成", 2, "已放弃");
@@ -159,7 +159,8 @@ public class QuestService {
             throw new IllegalArgumentException("难度不在可选范围内");
         }
         String realm = normalize(minRealm, "炼气", 10);
-        if (!REALM_ORDER.contains(realm)) {
+        // 支持纯大境界（筑基）或大境界+层次（筑基中期），只要能解析出已知境界即合法
+        if (RealmTier.realmWeight(realm) <= 0 && !REALM_ORDER.contains(realm)) {
             throw new IllegalArgumentException("修为门槛不在十大境界之内");
         }
         int quota = maxAccept == null ? 1 : maxAccept;
@@ -207,17 +208,16 @@ public class QuestService {
             throw new IllegalArgumentException("名额已满（" + used + "/" + quota + "），等下一批悬赏吧");
         }
 
-        // 修为门槛校验：以洞府档案境界为准
-        int needIdx = REALM_ORDER.indexOf(quest.getMinRealm() == null ? "炼气" : quest.getMinRealm());
+        // 修为门槛校验：以洞府档案境界 + 修为折算的小层次为准（支持「筑基中期」这类精确门槛）
+        int needWeight = RealmTier.realmWeight(quest.getMinRealm() == null ? "炼气" : quest.getMinRealm());
         UserProfile profile = userProfileMapper.selectOne(
                 new LambdaQueryWrapper<UserProfile>().eq(UserProfile::getUsername, name));
         String myRealm = profile == null || profile.getRealm() == null ? "炼气" : profile.getRealm();
-        int myIdx = REALM_ORDER.indexOf(myRealm);
-        if (myIdx < 0) {
-            myIdx = 0;
-        }
-        if (myIdx < needIdx) {
-            throw new IllegalArgumentException("修为不足：此任务需 " + quest.getMinRealm() + " 以上，你当前 " + myRealm);
+        long myCultivation = profile == null || profile.getCultivation() == null ? 0L : profile.getCultivation();
+        String myFull = RealmTier.fullRealm(myRealm, RealmTier.stageOf(myRealm, myCultivation));
+        int myWeight = RealmTier.realmWeight(myFull);
+        if (myWeight < needWeight) {
+            throw new IllegalArgumentException("修为不足：此任务需 " + quest.getMinRealm() + " 以上，你当前 " + myFull);
         }
 
         // 重复接取校验
