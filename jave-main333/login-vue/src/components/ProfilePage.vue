@@ -251,7 +251,7 @@
       </section>
     </template>
 
-    <footer class="page-foot">© 2026 逆天魔宗 · 洞府 · 修行的每一步，皆有印记</footer>
+    <footer class="page-foot">© 2026 寂幽门 · 洞府 · 修行的每一步，皆有印记</footer>
   </div>
 </template>
 

@@ -6,7 +6,7 @@
 
 ```bash
 npm install
-npm run dev      # 开发预览 http://127.0.0.1:5173
+npm run dev      # 局域网访问 http://192.168.68.32:5173（host 在 vite.config.js 中固定）
 npm run build    # 打包到 dist/
 npm run preview  # 预览打包结果
 ```

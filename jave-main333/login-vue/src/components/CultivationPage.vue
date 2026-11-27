@@ -107,7 +107,7 @@
       </ul>
     </section>
 
-    <footer class="page-foot">© 2026 逆天魔宗 · 魔功殿 · 逆天而行，后果自负</footer>
+    <footer class="page-foot">© 2026 寂幽门 · 魔功殿 · 逆天而行，后果自负</footer>
 
     <!-- 修炼结果弹层 -->
     <div v-if="result" class="detail-mask" @click.self="result = null">

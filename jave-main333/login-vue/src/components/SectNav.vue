@@ -8,7 +8,7 @@
           <circle cx="24" cy="24" r="3.4" fill="#e8c66a" stroke="none" />
         </svg>
       </span>
-      <span class="nav-title">逆天魔宗</span>
+      <span class="nav-title">寂幽门</span>
     </div>
 
     <ul class="nav-links">
@@ -23,6 +23,7 @@
     </ul>
 
     <div class="nav-user">
+      <button class="admin-entry" type="button" title="进入寂幽门后台管理系统" @click="openAdmin">后台管理</button>
       <span class="avatar" title="进入洞府" @click="go('profile')">{{ avatarChar }}</span>
       <span class="uname">{{ username }}</span>
       <button class="logout" type="button" @click="emit('logout')">退 出</button>
@@ -31,7 +32,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 
 const props = defineProps({
   active: { type: String, default: 'home' },
@@ -39,6 +40,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['nav', 'logout'])
+// App.vue 提供；不用每个页面都再转发一层 admin 事件
+const openAdmin = inject('openAdmin', () => {})
 
 const navItems = [
   { key: 'home', label: '首页' },
@@ -135,6 +138,25 @@ function go(key) {
   flex-shrink: 0;
 }
 
+.admin-entry {
+  padding: 6px 12px;
+  border: 1px solid rgba(185, 164, 242, .5);
+  border-radius: 8px;
+  background: rgba(59, 33, 94, .5);
+  color: var(--violet-soft);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s, background .18s;
+}
+
+.admin-entry:hover {
+  color: #f7e9c4;
+  border-color: var(--gold);
+  background: rgba(140, 15, 29, .6);
+}
+
 .avatar {
   width: 30px;
   height: 30px;
@@ -187,5 +209,6 @@ function go(key) {
   .nav-links li { white-space: nowrap; padding: 6px 12px; font-size: 13px; letter-spacing: 1px; }
   .nav-user { margin-left: auto; }
   .uname { display: none; }
+  .admin-entry { padding: 5px 8px; font-size: 12px; letter-spacing: 1px; }
 }
 </style>

@@ -1,11 +1,11 @@
 <template>
   <main class="form-side">
     <div class="form-head">
-      <h2>魔尊登临</h2>
-      <p>执掌乾坤，唯我独尊</p>
+      <h2>寂幽登临</h2>
+      <p>幽门夜启，静候道友</p>
     </div>
 
-    <form novalidate @submit.prevent="handleSubmit">
+    <form novalidate :aria-busy="loading" @submit.prevent="handleSubmit">
       <div class="field" :class="{ error: errors.username }">
         <label for="username">道号 / 法名</label>
         <div class="input-box">
@@ -15,14 +15,17 @@
           </svg>
           <input
             id="username"
+            ref="usernameInput"
             v-model.trim="form.username"
             type="text"
             placeholder="请输入道号或法名"
             autocomplete="username"
-            @input="errors.username = false"
+            :aria-invalid="errors.username"
+            aria-describedby="username-tip"
+            @input="clearError('username')"
           >
         </div>
-        <div class="err-tip">请输入道号或法名</div>
+        <div id="username-tip" class="err-tip">{{ usernameTip }}</div>
       </div>
 
       <div class="field" :class="{ error: errors.password }">
@@ -38,7 +41,9 @@
             :type="showPassword ? 'text' : 'password'"
             placeholder="请输入护身秘咒"
             autocomplete="current-password"
-            @input="errors.password = false"
+            :aria-invalid="errors.password"
+            aria-describedby="password-tip"
+            @input="clearError('password')"
           >
           <button type="button" class="toggle-eye" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword">
             <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -51,17 +56,31 @@
             </svg>
           </button>
         </div>
-        <div class="err-tip">秘咒不能少于 6 位</div>
+        <div id="password-tip" class="err-tip">{{ passwordTip }}</div>
+      </div>
+
+      <div v-if="serverError" class="server-error" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v5M12 16.5v.01" />
+        </svg>
+        <span>{{ serverError }}</span>
+      </div>
+
+      <div v-if="showForgot" class="forgot-panel" role="note">
+        <p>此间暂未开放秘咒重置。若遗忘秘咒，可先用试炼道号 <b>admin / test</b>（秘咒 <b>123456</b>）登临；自设道号需联系宗门执事重置。</p>
+        <button type="button" @click="showForgot = false">知道了</button>
       </div>
 
       <div class="row-between">
-        <label class="remember">
+        <label class="remember" title="记住道号，下次打开自动填入">
           <input id="remember" v-model="form.remember" type="checkbox"> 刻入魂印
         </label>
-        <a href="#" class="forgot" @click.prevent="emit('forgot')">秘咒失传？</a>
+        <a href="#" class="forgot" @click.prevent="showForgot = !showForgot">{{ showForgot ? '收起提示' : '秘咒失传？' }}</a>
       </div>
 
       <button type="submit" class="btn" :class="{ loading }" :disabled="loading">
+        <span v-if="loading" class="spinner" aria-hidden="true"></span>
         {{ loading ? '登临中…' : '登 临' }}
       </button>
     </form>
@@ -71,9 +90,12 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useToast } from '../composables/useToast'
 import { login } from '../api/auth'
+
+// 只记住道号，不存密码；后端目前不消费 remember 字段，持久化逻辑放在前端
+const REMEMBER_KEY = 'jiyou_remembered_username'
 
 const props = defineProps({
   // 注册成功后回填用户名（可选）
@@ -83,14 +105,14 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['success', 'forgot', 'signup'])
+const emit = defineEmits(['success', 'signup'])
 
 const { showToast } = useToast()
 
 const form = reactive({
   username: props.initialUsername,
   password: '',
-  remember: false
+  remember: Boolean(props.initialUsername)
 })
 
 const errors = reactive({
@@ -98,18 +120,37 @@ const errors = reactive({
   password: false
 })
 
+const usernameTip = ref('请输入道号或法名')
+const passwordTip = ref('秘咒不能少于 6 位')
+const serverError = ref('')
+const showForgot = ref(false)
+const usernameInput = ref(null)
 const showPassword = ref(false)
 const loading = ref(false)
 
+onMounted(() => {
+  if (!form.username) usernameInput.value?.focus()
+})
+
+function clearError(key) {
+  errors[key] = false
+  serverError.value = ''
+}
+
 function validate() {
   errors.username = !form.username
+  usernameTip.value = errors.username ? '请输入道号或法名' : ''
+
   errors.password = form.password.length < 6
+  passwordTip.value = errors.password ? '秘咒不能少于 6 位' : ''
+
   return !errors.username && !errors.password
 }
 
 async function handleSubmit() {
   if (!validate()) return
 
+  serverError.value = ''
   loading.value = true
   try {
     const res = await login({
@@ -117,23 +158,52 @@ async function handleSubmit() {
       password: form.password,
       remember: form.remember
     })
+
+    if (form.remember) localStorage.setItem(REMEMBER_KEY, form.username)
+    else localStorage.removeItem(REMEMBER_KEY)
+
     showToast(`登临成功，恭迎 ${res.username} 道友`)
     emit('success', res)
   } catch (err) {
-    showToast(err.message || '登临失败，请稍后重试')
+    const message = err.message || '登临失败，请稍后重试'
+    // 行内提示 + toast 双保险：toast 一闪而过，错误原因留在表单里
+    serverError.value = message
+    showToast(message)
   } finally {
     loading.value = false
   }
 }
-
 </script>
 
 <style scoped>
 .form-side {
+  position: relative;
+  overflow: hidden;
   padding: 56px 52px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+/* 表单侧的淡墨字：只作氛围，不抢输入焦点 */
+.form-side::before {
+  content: "幽";
+  position: absolute;
+  right: -30px;
+  bottom: -76px;
+  font-family: "STKaiti", "KaiTi", serif;
+  font-size: 280px;
+  line-height: 1;
+  font-weight: 700;
+  color: rgba(139, 107, 214, .05);
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+.form-side > * {
+  position: relative;
+  z-index: 1;
 }
 
 .form-head h2 {
@@ -150,6 +220,16 @@ async function handleSubmit() {
   font-size: 13px;
   color: var(--text-soft);
   letter-spacing: 2px;
+}
+
+/* 标题下的渐变细线，呼应门匾描边 */
+.form-head::after {
+  content: "";
+  display: block;
+  width: 54px;
+  height: 1px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, var(--gold), rgba(185, 164, 242, .55), transparent);
 }
 
 form {
@@ -252,6 +332,59 @@ form {
   display: block;
 }
 
+/* 服务端返回的错误：行内常驻，避免 toast 消失后用户不知道哪里错了 */
+.server-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 14px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 77, 94, .45);
+  border-radius: 9px;
+  background: rgba(90, 12, 24, .32);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.server-error svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* 「秘咒失传」展开说明：没有重置接口时，把可用出路讲清楚 */
+.forgot-panel {
+  margin: -4px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(185, 164, 242, .35);
+  border-radius: 10px;
+  background: rgba(139, 107, 214, .10);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-soft);
+}
+
+.forgot-panel p {
+  margin: 0;
+}
+
+.forgot-panel b {
+  color: var(--violet-soft);
+  font-weight: 600;
+}
+
+.forgot-panel button {
+  margin-top: 6px;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px dashed var(--violet-soft);
+  background: none;
+  color: var(--violet-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
 .row-between {
   display: flex;
   align-items: center;
@@ -289,6 +422,10 @@ form {
 .btn {
   width: 100%;
   height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   border: 1px solid rgba(212, 175, 55, .5);
   border-radius: 10px;
   cursor: pointer;
@@ -318,6 +455,23 @@ form {
   pointer-events: none;
 }
 
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(247, 233, 196, .45);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 1.8s; }
+}
+
 .signup {
   margin-top: 24px;
   text-align: center;
@@ -338,6 +492,12 @@ form {
 @media (max-width: 780px) {
   .form-side {
     padding: 36px 32px 40px;
+  }
+
+  .form-side::before {
+    font-size: 200px;
+    right: -20px;
+    bottom: -58px;
   }
 }
 </style>

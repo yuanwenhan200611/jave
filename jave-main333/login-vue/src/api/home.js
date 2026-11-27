@@ -1,6 +1,6 @@
 /**
  * 首页接口封装 —— 对接 Spring Boot 后端 /api/home/**
- * 后端地址通过 vite 代理（/api -> http://localhost:8081）
+ * 后端地址通过 vite 代理（/api -> http://192.168.68.32:8081）
  */
 
 async function request(url, { method = 'GET' } = {}) {

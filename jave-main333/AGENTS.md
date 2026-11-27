@@ -18,7 +18,7 @@ jave-main/
 ├── login-vue/           # 前端：Vue3 + Vite6
 │   ├── package.json     # 仅 vue / @vitejs/plugin-vue / vite / vite-plugin-singlefile
 │   ├── package-lock.json
-│   ├── vite.config.js   # host 127.0.0.1:5173，/api 代理到 http://localhost:8081
+│   ├── vite.config.js   # host 192.168.68.32:5173，/api 代理到 http://192.168.68.32:8081
 │   └── src/...
 └── springBootTest/      # 后端：Spring Boot 3.4.5 (Java 17 target)
     ├── mvnw / mvnw.cmd  # Maven Wrapper（本机没有全局 mvn，必须用这个）
@@ -31,10 +31,16 @@ jave-main/
 ```
 
 ## 关键事实（必记）
-- **前端端口 5173**，**后端端口 8081**。前端 dev 下 `/api` 代理到 8081。
-- **前端未引入 vue-router**：`App.vue` 用 `view` 状态机切换 `'login' | 'register' | 'home' | 'secret' | 'skill' | 'rank' | 'forum'`，登录成功后进首页，顶部导航（共享组件 `src/components/SectNav.vue`）在宗门各页面间切换。
+- **前端端口 5173**，**后端端口 8081**，前后端均监听局域网 IP `192.168.68.32`（2026-11-27 改）。前端 dev 下 `/api` 代理到 `http://192.168.68.32:8081`，后端 `server.address=192.168.68.32`，CORS 允许所有来源。局域网内其他设备用 `http://192.168.68.32:5173` 访问；数据库仍走本机 `localhost:3306`，无需改。
+  → 换 IP 时**必须同步三处**：`vite.config.js`（host + proxy.target）、`application.properties`（server.address）、`start.bat`（URL）；另外确认 Windows 防火墙放行 5173/8081 入站。
+- **前端未引入 vue-router**：`App.vue` 用 `view` 状态机切换 `'login' | 'register' | 'adminLogin' | 'admin' | 'home' | 'secret' | 'skill' | 'rank' | 'forum'`，登录成功后进首页，顶部导航（共享组件 `src/components/SectNav.vue`）在宗门各页面间切换。
   现有视图：home / secret / skill / cultivation / quest / market / rank / forum / profile（SECT_VIEWS 同步维护）。
   → 新增页面时继续用 `view` 状态机，或届时再引入 vue-router（需 `npm i vue-router`）。
+- **后台管理系统（2026-11-27 新增）**：首页起任意宗门页顶部导航右侧有「后台管理」按钮 → 独立后台登录页（**只有登录，没有注册**）→ 洞府数据管理台。
+  - 前端：`src/components/AdminLoginForm.vue`（独立登录卡，演示执事 `admin / 123456`）、`AdminPage.vue`（列表/搜索/分页/新增/编辑/删除/概览）、`src/api/admin.js`（token 存 `localStorage.jiyou_admin_token`，请求头 `X-Admin-Token`）。App.vue 用 `provide('openAdmin')` 把入口传给 SectNav，避免九个页面层层转发事件；`adminLogin/admin` 视图不走 BrandPanel 和登录卡片。
+  - 后端：`controller/AdminController.java` + `service/AdminService.java` + `entity/AdminUser.java` + `mapper/AdminUserMapper.java` + `util/AdminSessionUtil.java`（内存 token，2 小时有效，401 表示会话失效）。数据主体就是首页修行速览/洞府页用的 `user_profile`：账号、道号、头像、境界、修为、堂口、道语；境界/堂口校验沿用 `RealmTier` 与六堂口径，删档案不删前台账号（下次进洞府会自动重建默认档案）。
+  - SQL：`ensure_db.sql` 第 14 节幂等建 `admin_user` 并种入 admin；`login_db.sql` 全量重建脚本同步建表。start.bat 不用改。
+  - 管理接口：`POST /api/admin/login`、`POST /api/admin/logout`、`GET /api/admin/session`、`GET/POST /api/admin/profiles`、`PUT/DELETE /api/admin/profiles/{username}`。除 login 外都查 `X-Admin-Token`。
 - **宗门四堂（2026-11-09 已上线）**：
   - 功法阁 `SkillPage.vue`：复用 /api/home/search 按功法分类检索，分堂 tab = 功法的二级分类；
   - 秘境 `SecretPage.vue`：「随机探秘」走 POST /api/secret/roam（天机引路费 200 贡献值，每次必收；旧的免费 /api/sect/explore 已下线）；
@@ -127,7 +133,7 @@ jave-main/
 
 ## 怎么做（标准启动流程）
 1. 双击 `start.bat`（或命令行 `start.bat`）。
-2. 它会：检查 node/java → 尝试启动 MySQL 服务（没有就跳过）→ 新窗口 `npm ci`+`npm run dev` 起前端 → 另一个新窗口 `mvnw spring-boot:run`（先离线 `-o`，失败回退在线）起后端 → 等待 5173 端口就绪后**自动打开默认浏览器**到登录页 http://127.0.0.1:5173。
+2. 它会：检查 node/java → 尝试启动 MySQL 服务（没有就跳过）→ 新窗口 `npm ci`+`npm run dev` 起前端 → 另一个新窗口 `mvnw spring-boot:run`（先离线 `-o`，失败回退在线）起后端 → 等待 5173 端口就绪后**自动打开默认浏览器**到登录页 http://192.168.68.32:5173。
 3. 关项目：双击 `pause.bat`，按端口 8081/5173 杀进程。
 
 ## 已做的“提速”优化
@@ -156,6 +162,17 @@ jave-main/
 - **WorkBuddy 沙箱环境会注入 `SERVER__PORT` 环境变量**，Spring Boot 宽松绑定会把它当 `server.port`，
   覆盖 application-dev.properties 的 8081 → 后端起在随机端口或启动失败。真实用户机器无此变量，不受影响；
   仅在本沙箱内手动起后端时需要 `export SERVER__PORT=8081`。
-- **前端 UI 已改为「天命大反派·修仙（魔宗）」暗色主题**（2026-10-16）：主题变量集中在
-  `login-vue/src/styles/global.css` 的 `:root`，文案散布在 BrandPanel/LoginForm/RegisterForm。
-  要换回浅色 SaaS 风就改那几个文件，别只改一处。
+- **前端 UI 已改为「天命大反派·修仙」暗色魔修主题**（2026-10-16，2026-11-27 宗门改名「寂幽门」）：
+  主题变量集中在 `login-vue/src/styles/global.css` 的 `:root`（新增 `--violet/--violet-soft` 幽紫点缀），
+  文案散布在 BrandPanel/LoginForm/RegisterForm/SectNav 与各页脚。要换回浅色 SaaS 风就改那几个文件，别只改一处。
+- **宗门显示名「寂幽门」（2026-11-27 改）**：原「逆天魔宗」已从 index.html 标题、BrandPanel、SectNav
+  和全部页脚清除；登录/注册页同步改成幽寂调性（水印/印章「寂」、logo 换门形、「幽门夜启 / 寂影独行」）。
+  登录页功能补充全在 `LoginForm.vue` + `App.vue`：
+  「刻入魂印」= 只把道号写进 `localStorage.jiyou_remembered_username`（不存密码、不自动登录），
+  另有动态校验提示、服务端错误行内提示、提交 spinner、
+  「秘咒失传」说明面板（后端没有重置接口，只能告知演示账号/联系执事）。
+  ⚠️ 2026-11-27 用户要求：把「即刻入宗」下面那行试炼账号一键填入已删掉，`fillDemo` 与 `.demo-hint` 样式也一并移除，
+  别再加回来；演示账号信息只留在「秘咒失传」面板里。改这些别去翻后端，`remember` 参数后端目前仍不消费。
+  视觉氛围（2026-11-27 加强）：BrandPanel 有幽火浮尘（`.brand-motes`）、印章呼吸光环（`.seal-halo`）、
+  内描边和竖排门匾小字；LoginForm/RegisterForm 标题下有渐变细线，表单侧有淡墨「幽」字；
+  App.vue 登录卡片顶边有缓慢扫过的幽光。所有动效都带 `prefers-reduced-motion` 降级。

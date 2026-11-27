@@ -1,8 +1,8 @@
 <template>
   <main class="form-side">
     <div class="form-head">
-      <h2>入我魔道</h2>
-      <p>斩断天命，自立道途</p>
+      <h2>入我幽门</h2>
+      <p>斩断尘缘，共赴寂夜</p>
     </div>
 
     <form novalidate @submit.prevent="handleSubmit">
@@ -225,6 +225,16 @@ async function handleSubmit() {
   font-size: 13px;
   color: var(--text-soft);
   letter-spacing: 2px;
+}
+
+/* 与登录页统一的门匾细线 */
+.form-head::after {
+  content: "";
+  display: block;
+  width: 54px;
+  height: 1px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, var(--gold), rgba(185, 164, 242, .55), transparent);
 }
 
 form {

@@ -5,14 +5,13 @@
     <div class="app-bg-veil"></div>
   </div>
 
-  <div class="wrap" :class="{ 'is-home': isSectView }">
-    <BrandPanel v-if="!isSectView" />
+  <div class="wrap" :class="{ 'is-home': isSectView, 'is-admin': isAdminView }">
+    <BrandPanel v-if="showBrand" />
 
     <LoginForm
       v-if="view === 'login'"
       :initial-username="lastUsername"
       @success="handleSuccess"
-      @forgot="showToast('忘记密码功能待接入')"
       @signup="view = 'register'"
     />
 
@@ -20,6 +19,20 @@
       v-else-if="view === 'register'"
       @back="view = 'login'"
       @success="handleRegistered"
+    />
+
+    <!-- 后台：独立登录页（没有注册），登录后进入洞府数据管理台 -->
+    <AdminLoginForm
+      v-else-if="view === 'adminLogin'"
+      @success="handleAdminSuccess"
+      @back="view = 'login'"
+    />
+
+    <AdminPage
+      v-else-if="view === 'admin'"
+      :admin-name="adminName"
+      @back="view = currentUser ? 'home' : 'login'"
+      @logout="handleAdminLogout"
     />
 
     <!-- 登录后的宗门各堂：首页 / 秘境 / 功法阁 / 宗门榜 / 论道 / 洞府 -->
@@ -96,10 +109,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, provide, ref } from 'vue'
 import BrandPanel from './components/BrandPanel.vue'
 import LoginForm from './components/LoginForm.vue'
 import RegisterForm from './components/RegisterForm.vue'
+import AdminLoginForm from './components/AdminLoginForm.vue'
+import AdminPage from './components/AdminPage.vue'
 import HomePage from './components/HomePage.vue'
 import SecretPage from './components/SecretPage.vue'
 import SkillPage from './components/SkillPage.vue'
@@ -114,17 +129,25 @@ import { useToast } from './composables/useToast'
 
 const { showToast } = useToast()
 
-// 视图状态机：'login' | 'register' | 'home' | 'secret' | 'skill' | 'cultivation' | 'quest' | 'market' | 'rank' | 'forum' | 'profile'
+// 视图状态机：'login' | 'register' | 'adminLogin' | 'admin' | 'home' | 'secret' | 'skill' | 'cultivation' | 'quest' | 'market' | 'rank' | 'forum' | 'profile'
 // 未引入 vue-router，宗门各堂沿用 view 状态机切换
 const view = ref('login')
-const lastUsername = ref('')
+// 「刻入魂印」只记住道号：下次打开登录页自动回填，但不自动登录
+const lastUsername = ref(localStorage.getItem('jiyou_remembered_username') || '')
 const currentUser = ref('')
+const adminName = ref('')
 // 洞府「再寻一次」联动：跳回首页并自动搜索的关键词
 const searchSeed = ref('')
 
 /** 登录后的宗门页面共用全宽面板样式 */
 const SECT_VIEWS = ['home', 'secret', 'skill', 'cultivation', 'quest', 'market', 'rank', 'forum', 'profile']
 const isSectView = computed(() => SECT_VIEWS.includes(view.value))
+// 后台自己有完整布局：不展示品牌栏，也不套登录卡片
+const isAdminView = computed(() => view.value === 'adminLogin' || view.value === 'admin')
+const showBrand = computed(() => !isSectView.value && !isAdminView.value)
+
+// 导航栏的后台入口：通过 provide 下发，避免每个宗门页面都转发一层事件
+provide('openAdmin', () => { view.value = 'adminLogin' })
 
 // 打开永远是登录页；登录成功后才进入首页（不读取旧 token 自动续登）
 
@@ -142,6 +165,17 @@ function handleRegistered(res) {
   lastUsername.value = res.username
   view.value = 'login'
   showToast('请使用新账号登录')
+}
+
+function handleAdminSuccess(res) {
+  adminName.value = res.displayName || res.adminUsername || '宗门执事'
+  view.value = 'admin'
+  showToast('执事登台，洞府数据已就绪')
+}
+
+function handleAdminLogout() {
+  adminName.value = ''
+  view.value = 'adminLogin'
 }
 
 function goSect(key) {
@@ -239,6 +273,40 @@ function handleLogout() {
   border-radius: 0;
   box-shadow: none;
   overflow: visible;
+}
+
+/* 登录/注册卡片顶边的一缕幽光，缓慢扫过 */
+.wrap:not(.is-home):not(.is-admin)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, .75) 30%, rgba(185, 164, 242, .7) 65%, transparent);
+  animation: wrap-sweep 7s ease-in-out infinite alternate;
+}
+
+@keyframes wrap-sweep {
+  from { transform: translateX(-16%); opacity: .45; }
+  to   { transform: translateX(16%); opacity: 1; }
+}
+
+/* 后台登录/管理台：不套登录卡片，由各自组件负责布局 */
+.wrap.is-admin {
+  display: block;
+  max-width: 1320px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrap:not(.is-home):not(.is-admin)::before { animation: none; }
 }
 
 @media (max-width: 780px) {

@@ -5,8 +5,9 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * 跨域配置：允许前端开发服务器（如 http://127.0.0.1:5173）直接访问 /api/**
- * （前端已配置 vite 代理，本配置为双保险）
+ * 跨域配置：允许局域网前端（如 http://192.168.68.32:5173）直接访问 /api/**
+ * （前端已配置 vite 代理到 192.168.68.32:8081，本配置为双保险；
+ *   allowedOriginPatterns("*") 保证局域网内任意来源均可访问）
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {

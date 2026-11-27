@@ -254,7 +254,7 @@
       </div>
     </div>
 
-    <footer class="home-foot">© 2026 逆天魔宗 · 堕魔者，永生不灭</footer>
+    <footer class="home-foot">© 2026 寂幽门 · 堕魔者，永生不灭</footer>
   </div>
 </template>
 

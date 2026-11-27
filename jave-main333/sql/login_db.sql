@@ -39,6 +39,26 @@ INSERT INTO `user` (`username`, `password`) VALUES
   ('admin', 'e10adc3949ba59abbe56e057f20f883e'),
   ('test',  'e10adc3949ba59abbe56e057f20f883e');
 
--- 4. 校验
+-- 4. 后台管理员表（与前台会员分开；MD5("123456") 同上）
+DROP TABLE IF EXISTS `admin_user`;
+CREATE TABLE `admin_user` (
+  `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `username`     VARCHAR(50)  NOT NULL                COMMENT '后台登录账号',
+  `password`     VARCHAR(64)  NOT NULL                COMMENT '密码，MD5 32 位十六进制存储',
+  `display_name` VARCHAR(50)  NULL                    COMMENT '后台显示名',
+  `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_admin_username` (`username`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_general_ci
+  COMMENT = '后台管理员账号';
+
+INSERT INTO `admin_user` (`username`, `password`, `display_name`) VALUES
+  ('admin', 'e10adc3949ba59abbe56e057f20f883e', '寂幽门执事');
+
+-- 5. 校验
 SELECT 'init done' AS result;
 SELECT COUNT(*) AS user_count FROM `user`;
+SELECT COUNT(*) AS admin_count FROM `admin_user`;

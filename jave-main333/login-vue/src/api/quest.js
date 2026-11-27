@@ -1,6 +1,6 @@
 /**
  * 任务阁接口封装 —— 对接 Spring Boot 后端 /api/quest/**
- * 后端地址通过 vite 代理（/api -> http://localhost:8081）
+ * 后端地址通过 vite 代理（/api -> http://192.168.68.32:8081）
  *
  * 悬赏分两类：
  *   · sect     宗门颁发，奖励贡献值 / 灵石（可兼得）

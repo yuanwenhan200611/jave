@@ -145,7 +145,7 @@
       </div>
     </div>
 
-    <footer class="page-foot">© 2026 逆天魔宗 · 血辩台 · 道理讲不过，拳头总讲得过</footer>
+    <footer class="page-foot">© 2026 寂幽门 · 血辩台 · 道理讲不过，拳头总讲得过</footer>
   </div>
 </template>
 

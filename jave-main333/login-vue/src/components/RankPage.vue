@@ -188,7 +188,7 @@
       </section>
     </template>
 
-    <footer class="page-foot">© 2026 逆天魔宗 · 宗门榜 · 长老执宗，弟子蓄势</footer>
+    <footer class="page-foot">© 2026 寂幽门 · 宗门榜 · 长老执宗，弟子蓄势</footer>
   </div>
 </template>
 

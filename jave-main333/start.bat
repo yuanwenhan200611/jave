@@ -3,14 +3,15 @@ REM ============================================================
 REM  一键启动脚本 start.bat
 REM  同时拉起前端(Vue/Vite) 与 后端(Spring Boot)，并自动打开网页
 REM  本机每次重启 node_modules / target 会被清空，脚本自动重建
-REM  前端端口 5173，后端端口 8081
-REM  后端需 MySQL: 127.0.0.1:3306 / login_db / root / 123456
+REM  前端端口 5173，后端端口 8081，局域网访问地址 http://192.168.68.32:5173
+REM  后端需 MySQL: 127.0.0.1:3306 / login_db / root / 123456（数据库仅本机使用）
+REM  改 IP 时同步修改：vite.config.js(host/proxy)、application.properties(server.address)、start.bat(URL)
 REM ============================================================
 setlocal
 set "ROOT=%~dp0"
 set "FE=%ROOT%login-vue"
 set "BE=%ROOT%springBootTest"
-set "URL=http://127.0.0.1:5173"
+set "URL=http://192.168.68.32:5173"
 
 echo [1/5] 检查环境 node / java ...
 where node >nul 2>&1 || (echo 缺少 node，请先安装 Node.js & pause & exit /b 1)

@@ -141,7 +141,7 @@
       </div>
     </section>
 
-    <footer class="page-foot">© 2026 逆天魔宗 · 秘境 · 无尽机缘，待你开辟</footer>
+    <footer class="page-foot">© 2026 寂幽门 · 秘境 · 无尽机缘，待你开辟</footer>
 
     <!-- 详情弹层 -->
     <div v-if="detail" class="detail-mask" @click.self="closeDetail">

@@ -309,7 +309,7 @@ public class ProfileService {
         profile.setIcon("🧙");
         profile.setRealm("炼气");
         profile.setHall("血煞堂");
-        profile.setBio("初入魔宗，道心未定。");
+        profile.setBio("初入寂幽门，道心未定。");
         profile.setCultivation(0L);
         userProfileMapper.insert(profile);
         return userProfileMapper.selectById(profile.getId());

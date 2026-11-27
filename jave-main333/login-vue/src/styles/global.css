@@ -28,6 +28,10 @@
   --gold: #d4af37;
   --gold-soft: #e8c66a;
 
+  /* 幽紫：寂幽门的夜色点缀（登录/注册页用） */
+  --violet: #8b6bd6;
+  --violet-soft: #b9a4f2;
+
   /* 状态色 */
   --danger: #ff4d5e;
   --success: #4cc38a;

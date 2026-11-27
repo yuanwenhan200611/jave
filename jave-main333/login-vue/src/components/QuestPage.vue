@@ -134,7 +134,7 @@
       </ul>
     </section>
 
-    <footer class="page-foot">© 2026 逆天魔宗 · 任务阁 · 一令既出，驷马难追</footer>
+    <footer class="page-foot">© 2026 寂幽门 · 任务阁 · 一令既出，驷马难追</footer>
 
     <!-- ===== 发布个人悬赏弹窗 ===== -->
     <div v-if="publishing" class="mask" @click.self="publishing = false">
